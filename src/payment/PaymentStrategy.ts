@@ -10,23 +10,56 @@ class FreeRegistrationStrategy implements PaymentStrategy {
 } 
 
 class EWalletStrategy implements PaymentStrategy { 
+    private actualCost: number;
+
+    constructor(actualCost: number){
+        this.actualCost = actualCost;
+    }
+
     pay(amount: number): boolean { 
+        if(amount === this.actualCost){
         console.log(`Routing RM${amount} through E-Wallet API.`); 
         return true; 
-    } 
+        }else{
+            console.log('Payment Failed');
+            return false;
+        }
+    }
 } 
 
 class FPXStrategy implements PaymentStrategy { 
+    private actualCost: number;
+
+    constructor(actualCost: number){
+        this.actualCost = actualCost;
+    }
+
     pay(amount: number): boolean { 
+        if(amount === this.actualCost){
         console.log(`Routing RM${amount} through FPX Banking API.`); 
         return true; 
+        }else{
+            console.log('Payment Failed');
+            return false;
+        }
     } 
 } 
 
 class CreditCardStrategy implements PaymentStrategy { 
+    private actualCost: number;
+
+    constructor(actualCost: number){
+        this.actualCost = actualCost;
+    }
+    
     pay(amount: number): boolean { 
+        if(amount === this.actualCost){
         console.log(`Processing RM${amount} via Credit Card Gateway.`); 
-        return true; 
+        return true;
+        }else{
+           console.log('Payment Failed');
+            return false; 
+        } 
     } 
 } 
 
