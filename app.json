@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "UniPass",
+    "slug": "unipass",
+    "scheme": "unipass",
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}

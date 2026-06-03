@@ -1,0 +1,32 @@
+# Node modules (The most important one!)
+node_modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native build directories (if you ever eject to bare workflow)
+/android/
+/ios/
+
+# Environment Variables (Keep your secrets safe!)
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Typescript
+*.tsbuildinfo
