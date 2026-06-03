@@ -1,7 +1,7 @@
-import React from 'react';
-import { Drawer } from 'expo-router/drawer';
-import { Pressable, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Drawer } from 'expo-router/drawer';
+import React from 'react';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import { theme } from '../../constants/theme';
 
 export default function StudentLayout() {
@@ -24,8 +24,10 @@ export default function StudentLayout() {
         ),
       }}
     >
-      <Drawer.Screen name="wallet" options={{ drawerLabel: '🎟️ My E-Passes', title: 'Wallet' }} />
-      <Drawer.Screen name="notifications" options={{ drawerLabel: '🔔 Notifications', title: 'Notifications' }} />
+      <Drawer.Screen name="dashboard" options={{ drawerLabel: '🏠 Home', title: 'Discover Events' }} />
+      <Drawer.Screen name="wallet" options={{ drawerLabel: '🎟️ My E-Passes', title: 'E-Pass Wallet' }} />
+      <Drawer.Screen name="event-details" options={{ drawerItemStyle: { display: 'none' }, title: 'Event Details' }} />
+      <Drawer.Screen name="checkout" options={{ drawerItemStyle: { display: 'none' }, title: 'Checkout' }} />
     </Drawer>
   );
 }
