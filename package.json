@@ -5,7 +5,7 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
+    "android": "expo start --android --tunnel",
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
@@ -23,6 +23,7 @@
   "homepage": "https://github.com/The-silver-ghost/unipass#readme",
   "dependencies": {
     "@expo/metro-runtime": "~56.0.13",
+    "@expo/ngrok": "^4.1.0",
     "@react-navigation/drawer": "^7.10.3",
     "expo": "^56.0.8",
     "expo-linear-gradient": "~56.0.4",
