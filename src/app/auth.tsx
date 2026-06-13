@@ -1,13 +1,47 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { theme } from '../constants/theme';
+import { handleRegistration } from '../usr/RegistrationController'; 
 
 export default function AuthScreen() {
   const router = useRouter();
   const [stage, setStage] = useState(1);
   const [role, setRole] = useState<'student' | 'organizer'>('student');
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [nameOrClub, setNameOrClub] = useState('');
+  const [studentID, setStudentID] = useState('');
+
+  const handleSignUpFormSubmit = async () => {
+    const registrationPayload: any = {
+      email: email,
+      password: password, 
+    };
+
+    if (role === 'student') {
+      registrationPayload.name = nameOrClub;
+      registrationPayload.studentID = studentID;
+    } else {
+      registrationPayload.name = nameOrClub; 
+      registrationPayload.clubName = nameOrClub;
+    }
+
+    try {
+      const createdUser = await handleRegistration(role, registrationPayload);
+      Alert.alert(
+        "Registration Success", 
+        `Welcome to UniPass, ${createdUser.name}! Registered as a ${createdUser.role}.`
+      );
+
+      router.push(role === 'student' ? '/(student)/dashboard' : '/(organizer)/dashboard');
+    } catch (error: any) {
+      // Catches and shows validation errors thrown by StudentFactory or OrganizerFactory
+      Alert.alert("Registration Error", error.message);
+    }
+  };
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
@@ -33,8 +67,23 @@ export default function AuthScreen() {
                 </Pressable>
               </View>
 
-              <TextInput style={styles.input} placeholder="Email Address" placeholderTextColor={theme.colors.textMuted} />
-              <TextInput style={styles.input} placeholder="Password" placeholderTextColor={theme.colors.textMuted} secureTextEntry />
+              <TextInput 
+                style={styles.input} 
+                placeholder="Email Address" 
+                placeholderTextColor={theme.colors.textMuted}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              <TextInput 
+                style={styles.input} 
+                placeholder="Password" 
+                placeholderTextColor={theme.colors.textMuted} 
+                secureTextEntry 
+                value={password}
+                onChangeText={setPassword}
+              />
               
               <Pressable style={styles.primaryButton} onPress={() => setStage(2)}>
                 <Text style={styles.primaryButtonText}>Continue</Text>
@@ -48,14 +97,23 @@ export default function AuthScreen() {
                 style={styles.input} 
                 placeholder={role === 'student' ? 'Full Name' : 'Club / Society Name'} 
                 placeholderTextColor={theme.colors.textMuted} 
+                value={nameOrClub}
+                onChangeText={setNameOrClub}
               />
-              {role === 'student' && (
-                <TextInput style={styles.input} placeholder="Student ID (e.g. 1211100000)" placeholderTextColor={theme.colors.textMuted} />
-              )}
               
+              {role === 'student' && (
+                <TextInput 
+                  style={styles.input} 
+                  placeholder="Student ID (e.g. 1211100000)" 
+                  placeholderTextColor={theme.colors.textMuted} 
+                  value={studentID}
+                  onChangeText={setStudentID}
+                />
+              )}
+
               <Pressable 
                 style={styles.primaryButton} 
-                onPress={() => router.push(role === 'student' ? '/(student)/dashboard' : '/(organizer)/dashboard')}
+                onPress={handleSignUpFormSubmit}
               >
                 <Text style={styles.primaryButtonText}>Create Account</Text>
               </Pressable>
