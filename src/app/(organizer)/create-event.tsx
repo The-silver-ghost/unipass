@@ -1,75 +1,123 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, TextInput } from 'react-native';
+import { StyleSheet, Text, View, TextInput, Pressable, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { theme } from '../../constants/theme';
+import { EventCreationController } from '../../event/EventCreationController';
 
 export default function CreateEventScreen() {
   const router = useRouter();
+  
+  // Form States
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
-  const [price, setPrice] = useState('');
-  const [capacity, setCapacity] = useState('');
   const [description, setDescription] = useState('');
-  const [paymentAccount, setPaymentAccount] = useState('');
+  const [priceInput, setPriceInput] = useState('');
+  const [capacityInput, setCapacityInput] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = () => {
+    setLoading(true);
+    
+    const basePrice = priceInput.trim() === '' ? 0 : parseFloat(priceInput);
+    const capacity = capacityInput.trim() === '' ? 0 : parseInt(capacityInput, 10);
+
+    try {
+      // Execute Domain Controller
+      EventCreationController.createNewEvent({
+        organizerId: 'mock-organizer-id-xyz', // Contextually pulled from session later
+        title,
+        date,
+        description,
+        basePrice,
+        capacity,
+      });
+
+      Alert.alert('Success', 'Your event has been successfully published!', [
+        { text: 'OK', onPress: () => router.replace('/(organizer)/dashboard') }
+      ]);
+    } catch (error: any) {
+      // Captures validations including Alternative Flow 3a (RM1.00 processing fee warning)
+      Alert.alert('Creation Failed', error.message || 'An unknown error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           
-          <View style={styles.headerRow}>
+          <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.backButton}>
-              <Text style={styles.backButtonText}>← Cancel</Text>
+              <Text style={styles.backButtonText}>← Back</Text>
             </Pressable>
-            <Text style={styles.pageTitle}>New Event</Text>
+            <Text style={styles.pageTitle}>Create New Event</Text>
           </View>
 
           <View style={[theme.glassmorphism, styles.formContainer]}>
             
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Event Title</Text>
-              <TextInput style={styles.input} placeholder="e.g., MMU Tech Symposium" placeholderTextColor="rgba(255,255,255,0.3)" value={title} onChangeText={setTitle} />
-            </View>
+            <Text style={styles.inputLabel}>Event Title</Text>
+            <TextInput 
+              style={styles.input}
+              placeholder="e.g., MMU Cyber Hackathon"
+              placeholderTextColor={theme.colors.textMuted}
+              value={title}
+              onChangeText={setTitle}
+            />
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Date & Time</Text>
-              <TextInput style={styles.input} placeholder="DD/MM/YYYY HH:MM" placeholderTextColor="rgba(255,255,255,0.3)" value={date} onChangeText={setDate} />
-            </View>
+            <Text style={styles.inputLabel}>Event Date & Time</Text>
+            <TextInput 
+              style={styles.input}
+              placeholder="e.g., Oct 12, 2026 at 9:00 AM"
+              placeholderTextColor={theme.colors.textMuted}
+              value={date}
+              onChangeText={setDate}
+            />
 
-            <View style={styles.row}>
-              <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-                <Text style={styles.inputLabel}>Base Price (RM)</Text>
-                <TextInput style={styles.input} placeholder="0.00 for Free" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="numeric" value={price} onChangeText={setPrice} />
-              </View>
+            <Text style={styles.inputLabel}>Description</Text>
+            <TextInput 
+              style={[styles.input, styles.textArea]}
+              placeholder="Provide complete details about tickets, rules, and timeline..."
+              placeholderTextColor={theme.colors.textMuted}
+              multiline
+              numberOfLines={4}
+              value={description}
+              onChangeText={setDescription}
+            />
 
-              <View style={[styles.inputGroup, { flex: 1, marginLeft: 10 }]}>
-                <Text style={styles.inputLabel}>Max Capacity</Text>
-                <TextInput style={styles.input} placeholder="e.g., 500" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="numeric" value={capacity} onChangeText={setCapacity} />
-              </View>
-            </View>
+            <Text style={styles.inputLabel}>Base Price (RM) — Leave blank or 0 if Free</Text>
+            <TextInput 
+              style={styles.input}
+              placeholder="0.00"
+              placeholderTextColor={theme.colors.textMuted}
+              keyboardType="numeric"
+              value={priceInput}
+              onChangeText={setPriceInput}
+            />
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Event Description & Rules</Text>
-              <TextInput style={[styles.input, styles.textArea]} placeholder="Enter full event details, schedule, and rules..." placeholderTextColor="rgba(255,255,255,0.3)" multiline numberOfLines={4} value={description} onChangeText={setDescription} />
-            </View>
+            <Text style={styles.inputLabel}>General Admission Capacity</Text>
+            <TextInput 
+              style={styles.input}
+              placeholder="e.g., 200"
+              placeholderTextColor={theme.colors.textMuted}
+              keyboardType="number-pad"
+              value={capacityInput}
+              onChangeText={setCapacityInput}
+            />
 
-            <View style={styles.paymentSection}>
-              <Text style={styles.paymentLabel}>Payment Account</Text>
-              <TextInput style={styles.input} placeholder="Bank Account or Gateway ID (e.g., Stripe/FPX)" placeholderTextColor="rgba(255,255,255,0.3)" value={paymentAccount} onChangeText={setPaymentAccount} />
-              <Text style={styles.infoText}>Funds from ticket sales will be routed to this account.</Text>
-            </View>
-
-            <View style={styles.infoBox}>
-              <Text style={styles.infoBoxText}>ℹ️ This event will be strictly General Admission as per UniPass guidelines.</Text>
-            </View>
+            <Pressable 
+              style={[styles.submitButton, loading && { opacity: 0.6 }]} 
+              onPress={handleSubmit}
+              disabled={loading}
+            >
+              <Text style={styles.submitButtonText}>
+                {loading ? 'Publishing...' : 'Publish Event'}
+              </Text>
+            </Pressable>
 
           </View>
-
-          <Pressable style={styles.submitButton} onPress={() => router.back()}>
-            <Text style={styles.submitButtonText}>Publish Event</Text>
-          </Pressable>
-
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -78,22 +126,23 @@ export default function CreateEventScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 24, paddingTop: 60, paddingBottom: 40 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 30 },
+  scrollContent: { padding: 24 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 30, marginTop: 10 },
   backButton: { marginRight: 16, padding: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 8 },
   backButtonText: { color: theme.colors.white, fontWeight: '600' },
-  pageTitle: { color: theme.colors.white, fontSize: 28, fontWeight: '800' },
-  formContainer: { padding: 24, marginBottom: 30 },
-  inputGroup: { marginBottom: 20 },
-  inputLabel: { color: theme.colors.white, fontSize: 14, fontWeight: '600', marginBottom: 8 },
-  input: { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 12, padding: 16, color: theme.colors.white, fontSize: 16 },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  textArea: { height: 100, textAlignVertical: 'top' },
-  paymentSection: { marginTop: 10, paddingTop: 20, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', marginBottom: 20 },
-  paymentLabel: { color: theme.colors.brightRed, fontSize: 14, fontWeight: '800', marginBottom: 8 },
-  infoText: { color: theme.colors.white, fontSize: 12, marginTop: 8, opacity: 0.6 },
-  infoBox: { backgroundColor: 'rgba(219, 44, 44, 0.1)', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(219, 44, 44, 0.3)' },
-  infoBoxText: { color: theme.colors.white, fontSize: 12, lineHeight: 18, opacity: 0.8 },
-  submitButton: { backgroundColor: theme.colors.brightRed, paddingVertical: 18, borderRadius: 16, alignItems: 'center' },
-  submitButtonText: { color: theme.colors.white, fontWeight: '800', fontSize: 18 },
+  pageTitle: { color: theme.colors.white, fontSize: 24, fontWeight: '800' },
+  formContainer: { padding: 20, borderRadius: 16 },
+  inputLabel: { color: theme.colors.white, fontSize: 14, fontWeight: '600', marginBottom: 8, marginTop: 12 },
+  input: { 
+    backgroundColor: 'rgba(255,255,255,0.05)', 
+    borderRadius: 10, 
+    padding: 14, 
+    color: theme.colors.white, 
+    borderWidth: 1, 
+    borderColor: 'rgba(255,255,255,0.1)',
+    fontSize: 15
+  },
+  textArea: { minHeight: 100, textAlignVertical: 'top' },
+  submitButton: { backgroundColor: theme.colors.brightRed, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 28 },
+  submitButtonText: { color: theme.colors.white, fontWeight: '800', fontSize: 16 }
 });
