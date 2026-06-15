@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, Pressable, ScrollView, SafeAreaView, Alert } from 'react-native';
+import { StyleSheet, Text, View, TextInput, Pressable, ScrollView, SafeAreaView, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { theme } from '../../constants/theme';
 import { EventCreationController } from '../../event/EventCreationController';
 
@@ -10,24 +11,30 @@ export default function CreateEventScreen() {
   
   // Form States
   const [title, setTitle] = useState('');
-  const [date, setDate] = useState('');
   const [description, setDescription] = useState('');
   const [priceInput, setPriceInput] = useState('');
   const [capacityInput, setCapacityInput] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  // --- NEW DATE/TIME STATES ---
+  const [date, setDate] = useState(new Date()); // Holds the actual JS Date object
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
+
+  const handleSubmit = async () => {
     setLoading(true);
     
     const basePrice = priceInput.trim() === '' ? 0 : parseFloat(priceInput);
     const capacity = capacityInput.trim() === '' ? 0 : parseInt(capacityInput, 10);
 
+    // Because the DatePicker guarantees a valid Date object, we just convert it directly!
+    const isoDateString = date.toISOString();
+
     try {
-      // Execute Domain Controller
-      EventCreationController.createNewEvent({
-        organizerId: 'mock-organizer-id-xyz', // Contextually pulled from session later
+      await EventCreationController.createNewEvent({
+        organizerId: '2df69e3a-3a9a-48d3-845a-f1a354d5298d',
         title,
-        date,
+        date: isoDateString, 
         description,
         basePrice,
         capacity,
@@ -36,8 +43,8 @@ export default function CreateEventScreen() {
       Alert.alert('Success', 'Your event has been successfully published!', [
         { text: 'OK', onPress: () => router.replace('/(organizer)/dashboard') }
       ]);
+      
     } catch (error: any) {
-      // Captures validations including Alternative Flow 3a (RM1.00 processing fee warning)
       Alert.alert('Creation Failed', error.message || 'An unknown error occurred.');
     } finally {
       setLoading(false);
@@ -67,14 +74,44 @@ export default function CreateEventScreen() {
               onChangeText={setTitle}
             />
 
+            {/* --- NATIVE DATE & TIME PICKER BUTTONS --- */}
             <Text style={styles.inputLabel}>Event Date & Time</Text>
-            <TextInput 
-              style={styles.input}
-              placeholder="e.g., Oct 12, 2026 at 9:00 AM"
-              placeholderTextColor={theme.colors.textMuted}
-              value={date}
-              onChangeText={setDate}
-            />
+            <View style={styles.dateTimeRow}>
+              <Pressable 
+                style={[styles.input, { flex: 1, marginRight: 8 }]} 
+                onPress={() => { setPickerMode('date'); setShowPicker(true); }}
+              >
+                <Text style={styles.dateText}>{date.toLocaleDateString()}</Text>
+              </Pressable>
+              
+              <Pressable 
+                style={[styles.input, { flex: 1, marginLeft: 8 }]} 
+                onPress={() => { setPickerMode('time'); setShowPicker(true); }}
+              >
+                <Text style={styles.dateText}>
+                  {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* Hidden Picker Component that pops up when triggered */}
+            {showPicker && (
+              <DateTimePicker
+                value={date}
+                mode={pickerMode}
+                display="default"
+                onChange={(event, selectedDate) => {
+                  // Android closes automatically, iOS needs explicit state management
+                  if (Platform.OS === 'android') setShowPicker(false);
+                  
+                  if (event.type === 'set' && selectedDate) {
+                    setDate(selectedDate);
+                  } else if (event.type === 'dismissed') {
+                    setShowPicker(false);
+                  }
+                }}
+              />
+            )}
 
             <Text style={styles.inputLabel}>Description</Text>
             <TextInput 
@@ -142,6 +179,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
     fontSize: 15
   },
+  dateTimeRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  dateText: { color: theme.colors.white, fontSize: 15 },
   textArea: { minHeight: 100, textAlignVertical: 'top' },
   submitButton: { backgroundColor: theme.colors.brightRed, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 28 },
   submitButtonText: { color: theme.colors.white, fontWeight: '800', fontSize: 16 }
