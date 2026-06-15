@@ -9,28 +9,46 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// Health Check Route (To test if the server is awake)
+// Health Check Route
 app.get('/health', (req, res) => {
   res.json({ status: 'UniPass Server is awake and running!' });
 });
 
-// Mock Event Creation Route (Tied to your UC-2.3 architecture)
+// Real Event Creation Route connected to PostgreSQL
 app.post('/api/events', async (req, res) => {
   try {
-    const { title, description, date, basePrice, capacity } = req.body;
+    const { organizerId, title, description, eventDate, capacity, ticketPrice } = req.body;
     
-    // Once PostgreSQL is fully connected, you will replace this log with:
-    // const result = await pool.query('INSERT INTO "EVENT" (...) VALUES (...)');
+    // Parameterized inputs ($1, $2, etc.) to prevent SQL Injection
+    const sqlQuery = `
+      INSERT INTO "EVENT" (organizer_id, title, description, event_date, capacity, ticket_price, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *; 
+    `;
     
-    console.log(`[API] Received request to create event: ${title}`);
+    const values = [
+      organizerId, 
+      title, 
+      description, 
+      eventDate, 
+      capacity, 
+      ticketPrice, 
+      'Published'
+    ];
+
+    const result = await pool.query(sqlQuery, values);
+    const savedEvent = result.rows[0];
+    
+    console.log(`[API] SUCCESS: Event saved to database -> ${savedEvent.title}`);
     
     res.status(201).json({ 
-      message: 'Event successfully published to the server!',
-      receivedData: { title, basePrice, capacity }
+      message: 'Event successfully published to the database!',
+      event: savedEvent
     });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to create event' });
+    console.error('[API] Database insertion error:', error);
+    res.status(500).json({ error: 'Failed to create event in database' });
   }
 });
 
