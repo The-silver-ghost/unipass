@@ -1,0 +1,91 @@
+====================================================================
+               UNIPASS - TEAM SETUP & RUN INSTRUCTIONS
+====================================================================
+
+Welcome to the new architecture! We have restructured the app into a 
+"Monorepo" (two separate folders for Frontend and Backend) and upgraded 
+from SQLite to a real enterprise PostgreSQL database. 
+
+Because of this, YOU CANNOT JUST RUN ONE SCRIPT ANYMORE. You need to 
+set up your local environment first, and you will need TWO terminals 
+running at the same time to test the app.
+
+Follow these steps exactly in order.
+
+--------------------------------------------------------------------
+PHASE 1: PREREQUISITES (ONE-TIME SETUP)
+--------------------------------------------------------------------
+1. Node.js must be installed.
+2. PostgreSQL MUST be installed on your laptop. 
+   - Download the Windows x86-64 installer from EnterpriseDB.
+   - During install, it will ask you to create a master password. 
+     WRITE THIS DOWN. You will need it.
+   - Leave the port as 5432.
+3. Expo Go must be installed on your Android/iOS phone.
+
+--------------------------------------------------------------------
+PHASE 2: DATABASE SETUP (ONE-TIME)
+--------------------------------------------------------------------
+SQLite is gone. You now have a real database engine running in the 
+background of your computer.
+
+1. Open pgAdmin 4.
+2. In the left sidebar, connect to your local PostgreSQL server using 
+   the password you just created.
+3. Right-click 'Databases' -> Create -> Database...
+4. Name it exactly: unipass_db (leave owner as 'postgres'). Click Save.
+5. Highlight your new 'unipass_db' in the sidebar.
+6. Go to Tools -> Query Tool.
+7. Open the project folder, copy all the code inside 'server/database/init.sql', 
+   paste it into the Query Tool, and press the Play button to build the tables.
+
+--------------------------------------------------------------------
+PHASE 3: BACKEND (SERVER) SETUP
+--------------------------------------------------------------------
+We use a hidden file called '.env' to store passwords locally so we 
+don't leak them on GitHub.
+
+1. Open a terminal and navigate to the server folder:
+   cd server
+2. Install dependencies (only needed the first time):
+   npm install
+3. Look at the '.env.example' file. 
+4. CREATE A NEW FILE named exactly '.env' inside the server folder.
+5. Put this exact line in it, replacing the text with your actual pgAdmin password:
+   DB_PASSWORD=your_actual_password_here
+6. Start the backend:
+   npm run dev
+
+You should see: "Server listening on http://0.0.0.0:3000"
+(Leave this terminal running in the background!)
+
+--------------------------------------------------------------------
+PHASE 4: FRONTEND (MOBILE) SETUP
+--------------------------------------------------------------------
+The mobile app runs on your phone, so it needs to know your laptop's 
+local Wi-Fi IP address to send data to the server.
+
+1. Open a NEW, SECOND terminal window.
+2. Find your laptop's IP address:
+   - Windows: Type 'ipconfig' and find your IPv4 Address (e.g., 192.168.x.x)
+   - Mac: Type 'ifconfig' or check Network Settings.
+3. Navigate to the mobile folder:
+   cd mobile
+4. Install dependencies (only needed the first time):
+   npm install
+5. CREATE A NEW FILE named exactly '.env' inside the mobile folder.
+6. Put this exact line in it, using YOUR laptop's IP address:
+   EXPO_PUBLIC_API_URL=http://YOUR_LOCAL_IP_ADDRESS:3000
+7. Connect your phone via USB (with USB Debugging on) OR ensure your 
+   phone is on the exact same Wi-Fi network as your laptop.
+8. Start the app:
+   npm run android
+
+--------------------------------------------------------------------
+CRITICAL GIT RULES
+--------------------------------------------------------------------
+- NEVER upload your `.env` files to GitHub. 
+- Git is configured to ignore them automatically (via .gitignore).
+- If you add a new API key or password in the future, add it to your 
+  local `.env` file, and then add a dummy version to the `.env.example` 
+  file so the team knows they need to update theirs too.
