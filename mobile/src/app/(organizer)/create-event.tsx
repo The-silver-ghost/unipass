@@ -25,7 +25,7 @@ export default function CreateEventScreen() {
     try {
       // Execute Domain Controller
       EventCreationController.createNewEvent({
-        organizerId: 'mock-organizer-id-xyz', // Contextually pulled from session later
+        organizerId: '2df69e3a-3a9a-48d3-845a-f1a354d5298d', // Contextually pulled from session later
         title,
         date,
         description,
