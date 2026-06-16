@@ -8,6 +8,7 @@
 *.p12 
 *.key 
 *.mobileprovision 
- 
+
 # Environment Variables 
 .env 
+/mobile/src/config.ts

@@ -23,13 +23,21 @@ export default function WelcomeScreen() {
       <View style={[theme.glassmorphism, styles.glassContainer]}>
         <Text style={styles.selectionTitle}>Please select your role to continue:</Text>
         
-        <Pressable style={styles.primaryButton} onPress={() => router.push('/auth')}>
+        {/* CHANGED: Passes student role context over to auth screen */}
+        <Pressable 
+          style={styles.primaryButton} 
+          onPress={() => router.push({ pathname: '/auth', params: { selectedRole: 'student' } })}
+        >
           <Text style={styles.primaryButtonText}>I am a Student / Attendee</Text>
         </Pressable>
         
         <Text style={styles.orText}>— or —</Text>
 
-        <Pressable style={styles.primaryButton} onPress={() => router.push('/auth')}>
+        {/* CHANGED: Passes organizer role context over to auth screen */}
+        <Pressable 
+          style={styles.primaryButton} 
+          onPress={() => router.push({ pathname: '/auth', params: { selectedRole: 'organizer' } })}
+        >
           <Text style={styles.primaryButtonText}>I am an Event Organizer</Text>
         </Pressable>
       </View>

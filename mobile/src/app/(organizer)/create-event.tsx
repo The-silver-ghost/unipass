@@ -32,7 +32,7 @@ export default function CreateEventScreen() {
 
     try {
       await EventCreationController.createNewEvent({
-        organizerId: '2df69e3a-3a9a-48d3-845a-f1a354d5298d',
+        organizerId: '41e2bc68-e878-4713-9726-9aafffc0af71',
         title,
         date: isoDateString, 
         description,
