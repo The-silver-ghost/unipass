@@ -4,10 +4,12 @@ import { OrganizerUser } from './OrganizerUser';
 
 export class OrganizerFactory extends UserFactory {
     createUser(data: any): User {
-        // Run-time validation check
-        if (!data.clubName) {
-            throw new Error("Validation Error: 'clubName' field is required to register an Organizer account.");
+        // Enforce validations specific to organizers
+        if (!data.name || !data.email || !data.password) {
+            throw new Error("Validation Error: Please fill up all required fields for your club profile.");
         }
-        return new OrganizerUser(data.name, data.email, data.clubName);
+        
+        // Return a fresh Organizer object prepared to make a network execution call
+        return new OrganizerUser(data.name, data.email, data.password);
     }
-}    
+}

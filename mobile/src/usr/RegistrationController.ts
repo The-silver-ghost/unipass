@@ -9,8 +9,6 @@ const factoryRegistry: Record<string, UserFactory> = {
     organizer: new OrganizerFactory()
 };
 
-export const mockUserDatabase: User[] = []; 
-
 /**
  * Controller endpoint handler for processing new user account registrations.
  * @param roleType - The type of user requesting sign-up ("student" or "organizer")
@@ -25,10 +23,6 @@ export async function handleRegistration(roleType: string, registrationPayload: 
     }
 
     const newUser = await activeFactory.register(registrationPayload);
-    
-    // Save the abstract interface directly into our mock database array
-    mockUserDatabase.push(newUser);
-    console.log(`[Mock DB Storage] Total users in system: ${mockUserDatabase.length}`);
     
     return newUser;
 }

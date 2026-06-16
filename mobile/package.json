@@ -29,6 +29,7 @@
     "expo": "^56.0.8",
     "expo-linear-gradient": "~56.0.4",
     "expo-router": "~56.2.8",
+    "pg": "^8.21.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "^0.85.3",
@@ -39,6 +40,7 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@types/pg": "^8.20.0",
     "typescript": "~6.0.3"
   }
 }
