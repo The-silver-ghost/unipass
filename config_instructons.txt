@@ -1,0 +1,40 @@
+========================================================================
+             UNIPASS APP - FRONTEND NETWORK CONFIGURATION GUIDE
+========================================================================
+
+We have centralized our backend server connections into a single file to 
+prevent everyone from having to rewrite IP addresses across the codebase.
+
+LOCATION: mobile/src/usr/config.example.ts
+
+------------------------------------------------------------------------
+HOW TO CONFIG FOR YOUR TESTING ENVIRONMENT:
+------------------------------------------------------------------------
+
+Open 'mobile/src/usr/config.example.ts' and modify the ENVIRONMENT variable string to match 
+how you are currently testing the UniPass app.
+
+1. TESTING VIA WEB BROWSER (Default / Desktop)
+   Set the variable exactly to:
+   const ENVIRONMENT = 'web-local';
+   
+2. TESTING VIA NATIVE ANDROID EMULATOR (Android Studio)
+   Set the variable exactly to:
+   const ENVIRONMENT = 'android-emulator';
+   (This automatically routes your emulator traffic to the 10.0.2.2 loopback IP)
+
+3. TESTING VIA PHYSICAL ANDROID PHONE (Expo Go App over Wi-Fi)
+   Set the variable exactly to:
+   const ENVIRONMENT = 'physical-device';
+   
+   *CRITICAL FOR PHYSICAL PHONES:* You must also update the COMP_IP variable right below it with your 
+   computer's actual Local IPv4 address (e.g., '192.168.1.45'). 
+   Ensure your phone and computer are on the exact same Wi-Fi network!
+
+------------------------------------------------------------------------
+CRITICAL RULES FOR GIT / COMMIT RULES:
+------------------------------------------------------------------------
+- DO NOT commit your personal Local IPv4 address changes to the main branch. 
+- Keep the default ENVIRONMENT set to 'web-local' before pushing your code.
+
+========================================================================
