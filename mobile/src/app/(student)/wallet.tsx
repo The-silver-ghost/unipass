@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, TextInput, Modal } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, TextInput, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../constants/theme';
 
@@ -59,9 +59,10 @@ export default function StudentWalletScreen() {
         </ScrollView>
 
         <Modal visible={!!refundPassId} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={[theme.glassmorphism, styles.modalContent]}>
-              <Text style={styles.modalTitle}>Request Refund</Text>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+            <View style={styles.modalOverlay}>
+              <View style={[theme.glassmorphism, styles.modalContent]}>
+                <Text style={styles.modalTitle}>Request Refund</Text>
               <Text style={styles.modalSubtext}>Please select a reason for canceling your E-Pass.</Text>
               
               <View style={styles.reasonGroup}>
@@ -97,7 +98,7 @@ export default function StudentWalletScreen() {
                 </Pressable>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
       </SafeAreaView>

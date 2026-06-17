@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Alert } from 'react-native';
+import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { theme } from '../constants/theme';
 import { handleRegistration } from '../usr/RegistrationController';
 import { API_BASE_URL } from '../config';
@@ -134,80 +134,83 @@ export default function AuthScreen() {
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center' }}>
-        
-        <View style={styles.header}>
-          <Pressable onPress={() => stage === 2 ? setStage(1) : router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
-          </Pressable>
-          <Text style={styles.pageTitle}>
-            {stage === 1 
-              ? `Login / Register as ${role === 'student' ? 'Student' : 'Organizer'}` 
-              : 'Complete Profile'
-            }
-          </Text>
-        </View>
-
-        <View style={[theme.glassmorphism, styles.formContainer]}>
-          
-          {/* STAGE 1: The toggle pill row has been removed from here */}
-          {stage === 1 && (
-            <>
-              <TextInput 
-                style={styles.input} 
-                placeholder="Email Address" 
-                placeholderTextColor={theme.colors.textMuted}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-              />
-              <TextInput 
-                style={styles.input} 
-                placeholder="Password" 
-                placeholderTextColor={theme.colors.textMuted} 
-                secureTextEntry 
-                value={password}
-                onChangeText={setPassword}
-              />
-              
-              <Pressable style={styles.primaryButton} onPress={handleLoginSubmit}>
-                <Text style={styles.primaryButtonText}>Log In</Text>
+      <SafeAreaView style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center' }}>
+          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
+            <View style={styles.header}>
+              <Pressable onPress={() => stage === 2 ? setStage(1) : router.back()} style={styles.backButton}>
+                <Text style={styles.backButtonText}>← Back</Text>
               </Pressable>
+              <Text style={styles.pageTitle}>
+                {stage === 1 
+                  ? `Login / Register as ${role === 'student' ? 'Student' : 'Organizer'}` 
+                  : 'Complete Profile'
+                }
+              </Text>
+            </View>
 
-              <Pressable style={styles.secondaryButton} onPress={handleNextStage}>  
-                <Text style={styles.secondaryButtonText}>New User? Register Here →</Text>
-              </Pressable>
-            </>
-          )}
-
-          {/* STAGE 2 */}
-          {stage === 2 && (
-            <>
-              <TextInput 
-                style={styles.input} 
-                placeholder={role === 'student' ? 'Full Name' : 'Club / Society Name'} 
-                placeholderTextColor={theme.colors.textMuted} 
-                value={nameOrClub}
-                onChangeText={setNameOrClub}
-              />
+            <View style={[theme.glassmorphism, styles.formContainer]}>
               
-              {role === 'student' && (
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="Student ID (e.g. 1211100000)" 
-                  placeholderTextColor={theme.colors.textMuted} 
-                  value={studentID}
-                  onChangeText={setStudentID}
-                />
+              {/* STAGE 1: The toggle pill row has been removed from here */}
+              {stage === 1 && (
+                <>
+                  <TextInput 
+                    style={styles.input} 
+                    placeholder="Email Address" 
+                    placeholderTextColor={theme.colors.textMuted}
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                  />
+                  <TextInput 
+                    style={styles.input} 
+                    placeholder="Password" 
+                    placeholderTextColor={theme.colors.textMuted} 
+                    secureTextEntry 
+                    value={password}
+                    onChangeText={setPassword}
+                  />
+                  
+                  <Pressable style={styles.primaryButton} onPress={handleLoginSubmit}>
+                    <Text style={styles.primaryButtonText}>Log In</Text>
+                  </Pressable>
+
+                  <Pressable style={styles.secondaryButton} onPress={handleNextStage}>  
+                    <Text style={styles.secondaryButtonText}>New User? Register Here →</Text>
+                  </Pressable>
+                </>
               )}
-              
-              <Pressable style={styles.primaryButton} onPress={handleSignUpFormSubmit}>
-                <Text style={styles.primaryButtonText}>Create Account</Text>
-              </Pressable>
-            </>
-          )}
 
-        </View>
+              {/* STAGE 2 */}
+              {stage === 2 && (
+                <>
+                  <TextInput 
+                    style={styles.input} 
+                    placeholder={role === 'student' ? 'Full Name' : 'Club / Society Name'} 
+                    placeholderTextColor={theme.colors.textMuted} 
+                    value={nameOrClub}
+                    onChangeText={setNameOrClub}
+                  />
+                  
+                  {role === 'student' && (
+                    <TextInput 
+                      style={styles.input} 
+                      placeholder="Student ID (e.g. 1211100000)" 
+                      placeholderTextColor={theme.colors.textMuted} 
+                      value={studentID}
+                      onChangeText={setStudentID}
+                    />
+                  )}
+                  
+                  <Pressable style={styles.primaryButton} onPress={handleSignUpFormSubmit}>
+                    <Text style={styles.primaryButtonText}>Create Account</Text>
+                  </Pressable>
+                </>
+              )}
+
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
   );

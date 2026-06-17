@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { theme } from '../../constants/theme';
@@ -45,46 +45,48 @@ export default function EditDetailsScreen() {
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
-          </Pressable>
-          <Text style={styles.pageTitle}>Edit Details</Text>
-        </View>
-
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={[theme.glassmorphism, styles.card]}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Update Description</Text>
-              <TextInput 
-                style={[styles.input, styles.textArea]} 
-                placeholder="Update event details..." 
-                placeholderTextColor="rgba(255,255,255,0.3)" 
-                multiline
-                value={description}
-                onChangeText={setDescription}
-              />
-            </View>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Update Capacity</Text>
-              <TextInput 
-                style={styles.input} 
-                placeholder="500" 
-                placeholderTextColor="rgba(255,255,255,0.3)" 
-                keyboardType="numeric" 
-                value={capacity}
-                onChangeText={setCapacity}
-              />
-            </View>
-            <Pressable style={styles.primaryButton} onPress={handleSave} disabled={saving}>
-              {saving ? (
-                <ActivityIndicator color={theme.colors.white} />
-              ) : (
-                <Text style={styles.primaryButtonText}>Save Changes</Text>
-              )}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.headerRow}>
+            <Pressable onPress={() => router.back()} style={styles.backButton}>
+              <Text style={styles.backButtonText}>← Back</Text>
             </Pressable>
+            <Text style={styles.pageTitle}>Edit Details</Text>
           </View>
-        </ScrollView>
+
+          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+            <View style={[theme.glassmorphism, styles.card]}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Update Description</Text>
+                <TextInput 
+                  style={[styles.input, styles.textArea]} 
+                  placeholder="Update event details..." 
+                  placeholderTextColor="rgba(255,255,255,0.3)" 
+                  multiline
+                  value={description}
+                  onChangeText={setDescription}
+                />
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Update Capacity</Text>
+                <TextInput 
+                  style={styles.input} 
+                  placeholder="500" 
+                  placeholderTextColor="rgba(255,255,255,0.3)" 
+                  keyboardType="numeric" 
+                  value={capacity}
+                  onChangeText={setCapacity}
+                />
+              </View>
+              <Pressable style={styles.primaryButton} onPress={handleSave} disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator color={theme.colors.white} />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Save Changes</Text>
+                )}
+              </Pressable>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
   );

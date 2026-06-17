@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, ScrollView, SafeAreaView,
-  Pressable, Modal, TextInput, ActivityIndicator, Platform
+  Pressable, Modal, TextInput, ActivityIndicator, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -112,7 +112,8 @@ export default function CheckoutScreen() {
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
           <View style={styles.headerRow}>
             <Pressable onPress={() => router.back()} style={styles.backButton}>
@@ -167,6 +168,7 @@ export default function CheckoutScreen() {
           </Pressable>
 
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
 
       {/* Payment Credentials / Process Modal */}
