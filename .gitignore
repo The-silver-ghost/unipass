@@ -10,5 +10,4 @@
 *.mobileprovision 
 
 # Environment Variables 
-.env 
-/mobile/src/config.ts
+.env 
