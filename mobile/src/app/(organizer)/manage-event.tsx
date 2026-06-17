@@ -1,16 +1,47 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { theme } from '../../constants/theme';
+import { EventCreationController } from '../../event/EventCreationController';
 
 export default function ManageEventDashboard() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
+  const eventId = params.id as string;
   const title = params.title as string || 'Event Details';
   const capacity = params.capacity as string || '0';
   const price = params.price as string || 'Free';
+
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const handleCancelEvent = () => {
+    Alert.alert(
+      "Cancel Event",
+      "Are you sure you want to cancel this event? This action cannot be undone and will initiate refunds.",
+      [
+        { text: "No, Keep It", style: "cancel" },
+        { 
+          text: "Yes, Cancel Event", 
+          style: "destructive",
+          onPress: async () => {
+            setIsCancelling(true);
+            try {
+              await EventCreationController.cancelEvent(eventId);
+              Alert.alert('Success', 'Event has been cancelled.', [
+                { text: 'OK', onPress: () => router.replace('/(organizer)/dashboard') }
+              ]);
+            } catch (error: any) {
+              Alert.alert('Error', error.message);
+            } finally {
+              setIsCancelling(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
@@ -72,8 +103,12 @@ export default function ManageEventDashboard() {
 
           <View style={styles.dangerZone}>
             <Text style={styles.dangerTitle}>DANGER ZONE</Text>
-            <Pressable style={styles.dangerButton}>
-              <Text style={styles.dangerButtonText}>Cancel Event (Mass Refund)</Text>
+            <Pressable style={styles.dangerButton} onPress={handleCancelEvent} disabled={isCancelling}>
+              {isCancelling ? (
+                <ActivityIndicator color={theme.colors.white} />
+              ) : (
+                <Text style={styles.dangerButtonText}>Cancel Event (Mass Refund)</Text>
+              )}
             </Pressable>
           </View>
 

@@ -130,4 +130,19 @@ export class EventCreationController {
       throw new Error(error.message || 'Network connection failed while updating event.');
     }
   }
+
+  public static async cancelEvent(eventId: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}/cancel`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json();
+      
+      if (!response.ok) throw new Error(result.error || 'Failed to cancel event');
+    } catch (error: any) {
+      console.error('[EventCreationController] Failed to cancel event:', error);
+      throw new Error(error.message || 'Network connection failed while cancelling event.');
+    }
+  }
 }
