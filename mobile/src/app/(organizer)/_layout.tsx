@@ -26,7 +26,7 @@ export default function OrganizerLayout() {
     >
       {/* VISIBLE IN SIDEBAR */}
       <Drawer.Screen name="dashboard" options={{ drawerLabel: '🏠 Home', title: 'Organizer Dashboard' }} />
-      <Drawer.Screen name="manage-event" options={{ drawerLabel: '⚙️ Manage Event', title: 'Event Settings' }} />
+      <Drawer.Screen name="manage-event" options={{ drawerItemStyle: { display: 'none' }, title: 'Event Settings' }} />
       <Drawer.Screen name="notifications" options={{ drawerLabel: 'Notifications', title: 'Notifications' }} />
       
       {/* HIDDEN FROM SIDEBAR (But still accessible via clicks) */}
