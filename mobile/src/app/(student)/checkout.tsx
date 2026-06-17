@@ -8,6 +8,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { theme } from '../../constants/theme';
 import { resolveStrategy } from '../../payment/PaidEvent';
 import { CheckoutContext } from '../../payment/CheckoutContext';
+import { API_BASE_URL } from '../../config';
+import { userSession } from '../../usr/UserSession';
 
 type PaymentStatus = 'idle' | 'credentials' | 'processing' | 'success' | 'failed';
 
@@ -42,21 +44,47 @@ export default function CheckoutScreen() {
     setStatus('credentials');
   };
 
-  const handlePayment = () => {
-    setStatus('processing');
+  const handlePayment = async () => {
+  setStatus('processing');
 
-    setTimeout(() => {
-      try {
-        const strategy = resolveStrategy(ticketPrice, selectedMethod);
-        const checkout = new CheckoutContext(strategy);
-        const success = strategy.pay(ticketPrice);
-        checkout.executePayment(ticketPrice);
-        setStatus(success ? 'success' : 'failed');
-      } catch (e) {
-        setStatus('failed');
-      }
-    }, 1500);
-  };
+  try {
+    // Client-side credential validation
+    const strategy = resolveStrategy(ticketPrice, selectedMethod);
+    const credentialsValid = strategy.pay(ticketPrice);
+    if (!credentialsValid) {
+      setStatus('failed');
+      return;
+    }
+
+    // Guard: must be logged in
+    const student = userSession.getUser();
+    if (!student?.id) {
+      setStatus('failed');
+      return;
+    }
+
+    // Hit the backend
+    const response = await fetch(`${API_BASE_URL}/payments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        eventId: id,
+        studentId: student.id,
+        amount: ticketPrice,
+        method: selectedMethod,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message);
+
+    setStatus('success');
+
+  } catch (e: any) {
+    console.error('[Checkout] Payment error:', e.message);
+    setStatus('failed');
+  }
+};
 
   const resetModal = () => {
     setStatus('idle');
