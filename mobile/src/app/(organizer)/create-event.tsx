@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, Pressable, ScrollView, SafeAreaView, Alert, Platform } from 'react-native';
+import { StyleSheet, Text, View, TextInput, Pressable, ScrollView, SafeAreaView, Alert, Platform, KeyboardAvoidingView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { theme } from '../../constants/theme';
 import { EventCreationController } from '../../event/EventCreationController';
+import { userSession } from '../../usr/UserSession';
 
 export default function CreateEventScreen() {
   const router = useRouter();
@@ -30,9 +31,12 @@ export default function CreateEventScreen() {
     // Because the DatePicker guarantees a valid Date object, we just convert it directly!
     const isoDateString = date.toISOString();
 
+    const sessionUser = userSession.getUser();
+    const organizerId = sessionUser?.id || '41e2bc68-e878-4713-9726-9aafffc0af71';
+
     try {
       await EventCreationController.createNewEvent({
-        organizerId: '41e2bc68-e878-4713-9726-9aafffc0af71',
+        organizerId,
         title,
         date: isoDateString, 
         description,
@@ -54,33 +58,34 @@ export default function CreateEventScreen() {
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           
-          <View style={styles.header}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
-              <Text style={styles.backButtonText}>← Back</Text>
-            </Pressable>
-            <Text style={styles.pageTitle}>Create New Event</Text>
-          </View>
+            <View style={styles.header}>
+              <Pressable onPress={() => router.back()} style={styles.backButton}>
+                <Text style={styles.backButtonText}>← Back</Text>
+              </Pressable>
+              <Text style={styles.pageTitle}>Create New Event</Text>
+            </View>
 
-          <View style={[theme.glassmorphism, styles.formContainer]}>
-            
-            <Text style={styles.inputLabel}>Event Title</Text>
-            <TextInput 
-              style={styles.input}
-              placeholder="e.g., MMU Cyber Hackathon"
-              placeholderTextColor={theme.colors.textMuted}
-              value={title}
-              onChangeText={setTitle}
-            />
+            <View style={[theme.glassmorphism, styles.formContainer]}>
+              
+              <Text style={styles.inputLabel}>Event Title</Text>
+              <TextInput 
+                style={styles.input}
+                placeholder="e.g., MMU Cyber Hackathon"
+                placeholderTextColor={theme.colors.textMuted}
+                value={title}
+                onChangeText={setTitle}
+              />
 
-            {/* --- NATIVE DATE & TIME PICKER BUTTONS --- */}
-            <Text style={styles.inputLabel}>Event Date & Time</Text>
-            <View style={styles.dateTimeRow}>
-              <Pressable 
-                style={[styles.input, { flex: 1, marginRight: 8 }]} 
-                onPress={() => { setPickerMode('date'); setShowPicker(true); }}
-              >
+              {/* --- NATIVE DATE & TIME PICKER BUTTONS --- */}
+              <Text style={styles.inputLabel}>Event Date & Time</Text>
+              <View style={styles.dateTimeRow}>
+                <Pressable 
+                  style={[styles.input, { flex: 1, marginRight: 8 }]} 
+                  onPress={() => { setPickerMode('date'); setShowPicker(true); }}
+                >
                 <Text style={styles.dateText}>{date.toLocaleDateString()}</Text>
               </Pressable>
               
@@ -156,6 +161,7 @@ export default function CreateEventScreen() {
 
           </View>
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
   );

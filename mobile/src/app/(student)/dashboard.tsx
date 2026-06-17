@@ -1,17 +1,39 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, Pressable, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView, Pressable, SafeAreaView, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { theme } from '../../constants/theme';
-
-const upcomingEvents = [
-  { id: '1', title: 'MMU Tech Symposium', date: 'Oct 12, 2026', price: 'Free', capacity: '250' },
-  { id: '2', title: 'Campus Music Fest', date: 'Nov 05, 2026', price: 'RM 15.00', capacity: '500' },
-  { id: '3', title: 'Coding Bootcamp', date: 'Nov 18, 2026', price: 'RM 10.00', capacity: '50' },
-];
+import { EventCreationController } from '../../event/EventCreationController';
+import { Event } from '../../event/Event';
+import { userSession } from '../../usr/UserSession';
 
 export default function StudentDashboard() {
   const router = useRouter();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [studentName, setStudentName] = useState('Harvind');
+
+  useEffect(() => {
+    // Set greeting name dynamically
+    const sessionUser = userSession.getUser();
+    if (sessionUser) {
+      setStudentName(sessionUser.name);
+    }
+
+    // Fetch published events from database
+    async function loadEvents() {
+      try {
+        const fetched = await EventCreationController.getPublishedEvents();
+        setEvents(fetched);
+      } catch (error) {
+        console.error('[StudentDashboard] Error loading events:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadEvents();
+  }, []);
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
@@ -19,7 +41,7 @@ export default function StudentDashboard() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           
           <View style={styles.header}>
-            <Text style={styles.greeting}>Hello, Harvind 👋</Text>
+            <Text style={styles.greeting}>Hello, {studentName} 👋</Text>
             <Text style={styles.pageTitle}>Discover Events</Text>
           </View>
 
@@ -28,23 +50,65 @@ export default function StudentDashboard() {
             <Text style={styles.walletButtonText}>🎟️ Open My E-Pass Wallet</Text>
           </Pressable>
 
-          {upcomingEvents.map((event) => (
-            <Pressable key={event.id} style={[theme.glassmorphism, styles.eventCard]}>
-              <View style={styles.eventHeader}>
-                <Text style={styles.eventTitle}>{event.title}</Text>
-                <View style={styles.priceTag}>
-                  <Text style={styles.priceText}>{event.price}</Text>
-                </View>
-              </View>
-              <Text style={styles.eventDate}>📅 {event.date}</Text>
-              <Text style={styles.eventCapacity}>🎟️ {event.capacity} Spots Total</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color={theme.colors.brightRed} style={{ marginTop: 40 }} />
+          ) : events.length === 0 ? (
+            <Text style={{ color: theme.colors.textMuted, textAlign: 'center', fontSize: 16, marginTop: 40 }}>
+              No events published yet. Check back later!
+            </Text>
+          ) : (
+            events.map((event) => {
+              const formattedPrice = event.basePrice === 0 ? 'Free' : `RM ${event.basePrice.toFixed(2)}`;
               
-              {/* Route: Event Details Page */}
-              <Pressable style={styles.buyButton} onPress={() => router.push('/(student)/event-details')}>
-                <Text style={styles.buyButtonText}>Get E-Pass</Text>
-              </Pressable>
-            </Pressable>
-          ))}
+              // Helper to parse dates nicely (handles ISO string or Date objects)
+              const eventDateObj = new Date(event.date);
+              const formattedDate = isNaN(eventDateObj.getTime()) 
+                ? event.date 
+                : eventDateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+
+              const navParams = {
+                id: event.id,
+                title: event.title,
+                description: event.description,
+                date: formattedDate,
+                price: formattedPrice,
+                rawPrice: event.basePrice.toString(),
+                capacity: event.capacity.toString(),
+                organizerId: event.organizerId
+              };
+
+              return (
+                <Pressable 
+                  key={event.id} 
+                  style={[theme.glassmorphism, styles.eventCard]}
+                  onPress={() => router.push({
+                    pathname: '/(student)/event-details',
+                    params: navParams
+                  })}
+                >
+                  <View style={styles.eventHeader}>
+                    <Text style={styles.eventTitle}>{event.title}</Text>
+                    <View style={styles.priceTag}>
+                      <Text style={styles.priceText}>{formattedPrice}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.eventDate}>📅 {formattedDate}</Text>
+                  <Text style={styles.eventCapacity}>🎟️ {event.capacity} Spots Total</Text>
+                  
+                  {/* Route: Event Details Page */}
+                  <Pressable 
+                    style={styles.buyButton} 
+                    onPress={() => router.push({
+                      pathname: '/(student)/event-details',
+                      params: navParams
+                    })}
+                  >
+                    <Text style={styles.buyButtonText}>Get E-Pass</Text>
+                  </Pressable>
+                </Pressable>
+              );
+            })
+          )}
 
         </ScrollView>
       </SafeAreaView>

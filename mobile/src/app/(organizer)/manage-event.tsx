@@ -1,11 +1,48 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
+import { EventCreationController } from '../../event/EventCreationController';
 
 export default function ManageEventDashboard() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+
+  const eventId = params.id as string;
+  const title = params.title as string || 'Event Details';
+  const capacity = params.capacity as string || '0';
+  const price = params.price as string || 'Free';
+
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const handleCancelEvent = () => {
+    Alert.alert(
+      "Cancel Event",
+      "Are you sure you want to cancel this event? This action cannot be undone and will initiate refunds.",
+      [
+        { text: "No, Keep It", style: "cancel" },
+        { 
+          text: "Yes, Cancel Event", 
+          style: "destructive",
+          onPress: async () => {
+            setIsCancelling(true);
+            try {
+              await EventCreationController.cancelEvent(eventId);
+              Alert.alert('Success', 'Event has been cancelled.', [
+                { text: 'OK', onPress: () => router.replace('/(organizer)/dashboard') }
+              ]);
+            } catch (error: any) {
+              Alert.alert('Error', error.message);
+            } finally {
+              setIsCancelling(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
@@ -19,15 +56,15 @@ export default function ManageEventDashboard() {
             <Text style={styles.pageTitle}>Manage Event</Text>
           </View>
 
-          <Text style={styles.eventSubtitle}>Campus Music Fest</Text>
+          <Text style={styles.eventSubtitle}>{title}</Text>
 
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>412</Text>
-              <Text style={styles.statLabel}>Sold / 500</Text>
+              <Text style={styles.statNumber}>0</Text>
+              <Text style={styles.statLabel}>Sold / {capacity}</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>3</Text>
+              <Text style={styles.statNumber}>0</Text>
               <Text style={styles.statLabel}>Pending Refunds</Text>
             </View>
           </View>
@@ -35,31 +72,44 @@ export default function ManageEventDashboard() {
           <Text style={styles.sectionTitle}>Event Tools</Text>
 
           <View style={styles.gridContainer}>
-            <Pressable style={styles.gridItem} onPress={() => router.push('/(organizer)/edit-details')}>
-              <Text style={styles.gridIcon}>✏️</Text>
+            <Pressable style={styles.gridItem} onPress={() => router.push({
+              pathname: '/(organizer)/edit-details',
+              params: params
+            })}>
+              <Ionicons name="pencil" size={32} color={theme.colors.white} style={styles.gridIcon} />
               <Text style={styles.gridText}>Edit Details</Text>
             </Pressable>
 
-            <Pressable style={styles.gridItem} onPress={() => router.push('/(organizer)/send-announcement')}>
-              <Text style={styles.gridIcon}>📣</Text>
+            <Pressable style={styles.gridItem} onPress={() => router.push({
+              pathname: '/(organizer)/send-announcement',
+              params: params
+            })}>
+              <Ionicons name="megaphone" size={32} color={theme.colors.white} style={styles.gridIcon} />
               <Text style={styles.gridText}>Send Announcement</Text>
             </Pressable>
 
-            <Pressable style={styles.gridItem} onPress={() => router.push('/(organizer)/review-refunds')}>
-              <Text style={styles.gridIcon}>💸</Text>
+            <Pressable style={styles.gridItem} onPress={() => router.push({
+              pathname: '/(organizer)/review-refunds',
+              params: params
+            })}>
+              <Ionicons name="cash-outline" size={32} color={theme.colors.white} style={styles.gridIcon} />
               <Text style={styles.gridText}>Review Refunds</Text>
             </Pressable>
 
             <Pressable style={styles.gridItem} onPress={() => console.log('Exporting...')}>
-              <Text style={styles.gridIcon}>📥</Text>
+              <Ionicons name="download-outline" size={32} color={theme.colors.white} style={styles.gridIcon} />
               <Text style={styles.gridText}>Export Roster</Text>
             </Pressable>
           </View>
 
           <View style={styles.dangerZone}>
             <Text style={styles.dangerTitle}>DANGER ZONE</Text>
-            <Pressable style={styles.dangerButton}>
-              <Text style={styles.dangerButtonText}>Cancel Event (Mass Refund)</Text>
+            <Pressable style={styles.dangerButton} onPress={handleCancelEvent} disabled={isCancelling}>
+              {isCancelling ? (
+                <ActivityIndicator color={theme.colors.white} />
+              ) : (
+                <Text style={styles.dangerButtonText}>Cancel Event (Mass Refund)</Text>
+              )}
             </Pressable>
           </View>
 

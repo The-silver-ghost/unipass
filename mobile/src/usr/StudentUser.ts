@@ -2,6 +2,7 @@ import { API_BASE_URL } from '../config';
 import { User } from './User';
 
 export class StudentUser implements User {
+    id?: string;
     role = "student";
     name: string;
     email: string;
@@ -48,6 +49,7 @@ export class StudentUser implements User {
 
             const responseData = await response.json();
             console.log(`[Web Client Test] Success Response from Server:`, responseData);
+            this.id = responseData.userId;
 
         } catch (error: any) {
             console.error(`[Network Error] Details:`, error.message);

@@ -52,6 +52,107 @@ app.post('/api/events', async (req, res) => {
   }
 });
 
+// GET Route to retrieve events with optional organizer filter
+app.get('/api/events', async (req, res) => {
+  try {
+    const { organizerId } = req.query;
+    console.log(`[Server API] Fetching events. Organizer Filter: ${organizerId || 'None'}`);
+
+    let sqlQuery = `SELECT * FROM "EVENT"`;
+    const values: any[] = [];
+
+    if (organizerId) {
+      sqlQuery += ` WHERE organizer_id = $1`;
+      values.push(organizerId);
+    } else {
+      sqlQuery += ` WHERE status != 'Cancelled'`;
+    }
+
+    sqlQuery += ` ORDER BY event_date ASC;`;
+
+    const result = await pool.query(sqlQuery, values);
+    
+    console.log(`[Server API] Success: Retrieved ${result.rows.length} events.`);
+    res.status(200).json({ events: result.rows });
+
+  } catch (error: any) {
+    console.error('[Server API] Database retrieval error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch events from database' });
+  }
+});
+
+app.put('/api/events/:id/cancel', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    
+    const sqlQuery = `
+      UPDATE "EVENT" 
+      SET status = 'Cancelled'
+      WHERE id = $1
+      RETURNING *;
+    `;
+    const result = await pool.query(sqlQuery, [eventId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    console.log(`[Server API] Success: Cancelled event ${eventId}`);
+    res.status(200).json({ message: 'Event cancelled successfully', event: result.rows[0] });
+  } catch (error: any) {
+    console.error('[Server API] Cancellation error:', error.message);
+    res.status(500).json({ error: 'Failed to cancel event' });
+  }
+});
+
+app.delete('/api/events/:id', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    
+    const sqlQuery = `
+      DELETE FROM "EVENT"
+      WHERE id = $1
+      RETURNING *;
+    `;
+    const result = await pool.query(sqlQuery, [eventId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    console.log(`[Server API] Success: Deleted event ${eventId}`);
+    res.status(200).json({ message: 'Event deleted successfully', event: result.rows[0] });
+  } catch (error: any) {
+    console.error('[Server API] Delete error:', error.message);
+    res.status(500).json({ error: 'Failed to delete event' });
+  }
+});
+
+app.put('/api/events/:id', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const { description, capacity } = req.body;
+    
+    const sqlQuery = `
+      UPDATE "EVENT" 
+      SET description = $1, capacity = $2
+      WHERE id = $3
+      RETURNING *;
+    `;
+    const result = await pool.query(sqlQuery, [description, capacity, eventId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    console.log(`[Server API] Success: Updated event ${eventId}`);
+    res.status(200).json({ message: 'Event updated successfully', event: result.rows[0] });
+  } catch (error: any) {
+    console.error('[Server API] Update error:', error.message);
+    res.status(500).json({ error: 'Failed to update event' });
+  }
+});
+
 app.post('/api/register', async (req, res) => {
     const { name, email, password, role } = req.body;
     console.log(`[Server API] Received registration for: ${email}`);

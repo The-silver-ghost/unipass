@@ -2,6 +2,7 @@ import { API_BASE_URL } from '../config';
 import { User } from './User';
 
 export class OrganizerUser implements User {
+    id?: string;
     role = "organizer"; 
     name: string; // This maps to the Club / Society Name in Stage 2
     email: string;
@@ -38,6 +39,7 @@ export class OrganizerUser implements User {
 
             const responseData = await response.json();
             console.log(`[Web Client Test] Success Response from Server:`, responseData);
+            this.id = responseData.userId;
 
         } catch (error: any) {
             console.error(`[Organizer Network Error] Details:`, error.message);

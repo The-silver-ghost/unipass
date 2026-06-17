@@ -1,11 +1,22 @@
 import React from 'react';
 import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { theme } from '../../constants/theme';
 
 export default function EventDetailsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+
+  // Extract params with safe defaults
+  const id = params.id as string || '';
+  const title = params.title as string || 'Event Details';
+  const description = params.description as string || '';
+  const date = params.date as string || '';
+  const price = params.price as string || 'Free';
+  const rawPrice = params.rawPrice as string || '0';
+  const capacity = params.capacity as string || '0';
+  const organizerId = params.organizerId as string || '';
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
@@ -18,21 +29,20 @@ export default function EventDetailsScreen() {
 
           <View style={styles.heroSection}>
             <View style={styles.organizerBadge}>
-              <Text style={styles.organizerText}>By: IT Society</Text>
+              <Text style={styles.organizerText}>Event Details</Text>
             </View>
-            <Text style={styles.title}>Campus Music Fest</Text>
-            <Text style={styles.price}>RM 15.00</Text>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.price}>{price}</Text>
           </View>
 
           <View style={[theme.glassmorphism, styles.detailsCard]}>
             <Text style={styles.sectionHeader}>Event Details</Text>
-            <Text style={styles.infoRow}>📅 Date: Thursday, Nov 05, 2026</Text>
-            <Text style={styles.infoRow}>🕒 Time: 6:00 PM - 11:00 PM</Text>
-            <Text style={styles.infoRow}>📍 Venue: Main Hall (General Admission)</Text>
-            <Text style={styles.infoRow}>🎟️ Capacity: 500 Spots</Text>
+            <Text style={styles.infoRow}>📅 Date: {date}</Text>
+            <Text style={styles.infoRow}>📍 Venue: MMU Campus (General Admission)</Text>
+            <Text style={styles.infoRow}>🎟️ Capacity: {capacity} Spots</Text>
             
             <Text style={styles.description}>
-              Join us for the biggest campus music festival of the year! Featuring live performances from local student bands, DJ sets, and food stalls. 
+              {description || 'No description provided for this event.'}
             </Text>
           </View>
 
@@ -40,7 +50,21 @@ export default function EventDetailsScreen() {
         
         {/* Sticky Bottom Checkout Bar */}
         <View style={styles.stickyBottom}>
-          <Pressable style={styles.checkoutButton} onPress={() => router.push('/(student)/checkout')}>
+          <Pressable 
+            style={styles.checkoutButton} 
+            onPress={() => router.push({
+              pathname: '/(student)/checkout',
+              params: {
+                id,
+                title,
+                price,
+                rawPrice,
+                date,
+                capacity,
+                organizerId
+              }
+            })}
+          >
             <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
           </Pressable>
         </View>
