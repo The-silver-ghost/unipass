@@ -5,6 +5,7 @@ import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Alert } fro
 import { theme } from '../constants/theme';
 import { handleRegistration } from '../usr/RegistrationController';
 import { API_BASE_URL } from '../config';
+import { userSession } from '../usr/UserSession';
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -54,6 +55,13 @@ export default function AuthScreen() {
       if (!response.ok) {
         throw new Error(data.message || "Invalid credentials");
       }
+
+      userSession.setUser({
+        id: data.user.id,
+        name: data.user.full_name,
+        email: data.user.email,
+        role: data.user.role.toLowerCase() as 'student' | 'organizer',
+      });
 
       if (typeof alert !== 'undefined') alert(`Welcome Back, ${data.user.full_name}!`);
       else Alert.alert("Welcome Back!", `Logged in successfully as ${data.user.full_name}`);
@@ -107,6 +115,14 @@ export default function AuthScreen() {
 
     try {
       const createdUser = await handleRegistration(role, registrationPayload);
+      
+      userSession.setUser({
+        id: createdUser.id || '',
+        name: createdUser.name,
+        email: createdUser.email,
+        role: createdUser.role as 'student' | 'organizer',
+      });
+
       if (typeof alert !== 'undefined') alert("Registration Success!");
       else Alert.alert("Registration Success", `Welcome!`);
       router.push(role === 'student' ? '/(student)/dashboard' : '/(organizer)/dashboard');
