@@ -79,6 +79,31 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
+app.put('/api/events/:id', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const { description, capacity } = req.body;
+    
+    const sqlQuery = `
+      UPDATE "EVENT" 
+      SET description = $1, capacity = $2
+      WHERE id = $3
+      RETURNING *;
+    `;
+    const result = await pool.query(sqlQuery, [description, capacity, eventId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    console.log(`[Server API] Success: Updated event ${eventId}`);
+    res.status(200).json({ message: 'Event updated successfully', event: result.rows[0] });
+  } catch (error: any) {
+    console.error('[Server API] Update error:', error.message);
+    res.status(500).json({ error: 'Failed to update event' });
+  }
+});
+
 app.post('/api/register', async (req, res) => {
     const { name, email, password, role } = req.body;
     console.log(`[Server API] Received registration for: ${email}`);

@@ -113,4 +113,21 @@ export class EventCreationController {
       return [];
     }
   }
+
+  public static async updateEvent(eventId: string, description: string, capacity: number): Promise<Event> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description, capacity })
+      });
+      const result = await response.json();
+      
+      if (!response.ok) throw new Error(result.error || 'Failed to update event');
+      return mapDatabaseEventToEvent(result.event);
+    } catch (error: any) {
+      console.error('[EventCreationController] Failed to update event:', error);
+      throw new Error(error.message || 'Network connection failed while updating event.');
+    }
+  }
 }

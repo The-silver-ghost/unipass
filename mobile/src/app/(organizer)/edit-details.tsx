@@ -1,11 +1,46 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, TextInput } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { theme } from '../../constants/theme';
+import { EventCreationController } from '../../event/EventCreationController';
 
 export default function EditDetailsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+
+  const eventId = params.id as string;
+  const initialDescription = params.description as string || '';
+  const initialCapacity = params.capacity as string || '';
+
+  const [description, setDescription] = useState(initialDescription);
+  const [capacity, setCapacity] = useState(initialCapacity);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!description.trim() || !capacity.trim()) {
+      Alert.alert('Error', 'Please fill out all fields.');
+      return;
+    }
+
+    const capNumber = parseInt(capacity, 10);
+    if (isNaN(capNumber) || capNumber <= 0) {
+      Alert.alert('Error', 'Capacity must be a valid number greater than 0.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await EventCreationController.updateEvent(eventId, description, capNumber);
+      Alert.alert('Success', 'Event details updated successfully!', [
+        { text: 'OK', onPress: () => router.dismissAll() }
+      ]);
+    } catch (error: any) {
+      Alert.alert('Save Failed', error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
@@ -26,14 +61,27 @@ export default function EditDetailsScreen() {
                 placeholder="Update event details..." 
                 placeholderTextColor="rgba(255,255,255,0.3)" 
                 multiline
+                value={description}
+                onChangeText={setDescription}
               />
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Update Capacity</Text>
-              <TextInput style={styles.input} placeholder="500" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="numeric" />
+              <TextInput 
+                style={styles.input} 
+                placeholder="500" 
+                placeholderTextColor="rgba(255,255,255,0.3)" 
+                keyboardType="numeric" 
+                value={capacity}
+                onChangeText={setCapacity}
+              />
             </View>
-            <Pressable style={styles.primaryButton} onPress={() => router.back()}>
-              <Text style={styles.primaryButtonText}>Save Changes</Text>
+            <Pressable style={styles.primaryButton} onPress={handleSave} disabled={saving}>
+              {saving ? (
+                <ActivityIndicator color={theme.colors.white} />
+              ) : (
+                <Text style={styles.primaryButtonText}>Save Changes</Text>
+              )}
             </Pressable>
           </View>
         </ScrollView>
