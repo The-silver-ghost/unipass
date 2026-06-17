@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { theme } from '../../constants/theme';
 import { EventCreationController } from '../../event/EventCreationController';
@@ -16,24 +16,27 @@ export default function OrganizerDashboard() {
   const sessionUser = userSession.getUser();
   const organizerId = sessionUser?.id || '41e2bc68-e878-4713-9726-9aafffc0af71'; // Fallback for developer testing
 
-  useEffect(() => {
-    if (sessionUser) {
-      setOrganizerName(sessionUser.name);
-    }
-
-    async function loadEvents() {
-      try {
-        const fetched = await EventCreationController.getEventsByOrganizer(organizerId);
-        setEvents(fetched);
-      } catch (error) {
-        console.error('[OrganizerDashboard] Error fetching events:', error);
-      } finally {
-        setLoading(false);
+  useFocusEffect(
+    React.useCallback(() => {
+      if (sessionUser) {
+        setOrganizerName(sessionUser.name);
       }
-    }
 
-    loadEvents();
-  }, [organizerId]);
+      async function loadEvents() {
+        setLoading(true);
+        try {
+          const fetched = await EventCreationController.getEventsByOrganizer(organizerId);
+          setEvents(fetched);
+        } catch (error) {
+          console.error('[OrganizerDashboard] Error fetching events:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      loadEvents();
+    }, [organizerId])
+  );
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
