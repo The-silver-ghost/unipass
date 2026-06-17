@@ -32,7 +32,7 @@ export default function CreateEventScreen() {
     const isoDateString = date.toISOString();
 
     const sessionUser = userSession.getUser();
-    const organizerId = sessionUser?.id || '41e2bc68-e878-4713-9726-9aafffc0af71';
+    const organizerId = sessionUser?.id || 'ec52b657-01ca-47fc-bf41-a1ee9fb094f2';
 
     try {
       await EventCreationController.createNewEvent({
