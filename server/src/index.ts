@@ -240,6 +240,81 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+app.post('/api/payments', async (req, res) => {
+  const { eventId, studentId, amount, method } = req.body;
+  console.log(`[Server API] Payment requested — Event: ${eventId}, Student: ${studentId}, Method: ${method}`);
+
+  try {
+    //check event exists and is not cancelled
+    const eventCheck = await pool.query(
+      `SELECT * FROM "EVENT" WHERE id = $1 AND status != 'cancelled'`,
+      [eventId]
+    );
+    if (eventCheck.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Event not found or no longer available.' });
+    }
+
+    //prevent duplicate registration
+    const duplicate = await pool.query(
+      `SELECT id FROM "REGISTRATION" WHERE event_id = $1 AND student_id = $2 AND status != 'cancelled'`,
+      [eventId, studentId]
+    );
+    if (duplicate.rows.length > 0) {
+      return res.status(409).json({ success: false, message: 'You already have a ticket for this event.' });
+    }
+
+    //create REGISTRATION
+    const registrationResult = await pool.query(
+      `INSERT INTO "REGISTRATION" (student_id, event_id, status)
+       VALUES ($1, $2, 'confirmed')
+       RETURNING id`,
+      [studentId, eventId]
+    );
+    const registrationId = registrationResult.rows[0].id;
+    console.log(`[Server API] Registration created: ${registrationId}`);
+
+    //record PAYMENT_LOG
+    const receiptRef = `TXN-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO "PAYMENT_LOG" (registration_id, method, transaction_type, amount, status, paid_at, receipt_ref)
+       VALUES ($1, $2, 'charge', $3, 'success', NOW(), $4)`,
+      [registrationId, method, amount, receiptRef]
+    );
+    console.log(`[Server API] Payment logged: ${receiptRef}`);
+
+    //issue EPASS
+    const qrCode = `EPASS-${registrationId}-${Date.now()}`;
+    const epassResult = await pool.query(
+      `INSERT INTO "EPASS" (registration_id, qr_code, state)
+       VALUES ($1, $2, 'issued')
+       RETURNING id`,
+      [registrationId, qrCode]
+    );
+    const epassId = epassResult.rows[0].id;
+    console.log(`[Server API] E-Pass issued: ${epassId}`);
+
+    //log initial EPASS state — old_state = 'issued' since there's no prior state
+    await pool.query(
+      `INSERT INTO "EPASS_STATE_LOG" (epass_id, triggered_by, old_state, new_state)
+       VALUES ($1, $2, 'issued', 'issued')`,
+      [epassId, studentId]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: 'Payment successful. E-Pass issued.',
+      registrationId,
+      epassId,
+      receiptRef,
+      qrCode
+    });
+
+  } catch (error: any) {
+    console.error('[Server API] Payment error:', error.message);
+    return res.status(500).json({ success: false, message: 'Payment processing failed.' });
+  }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
