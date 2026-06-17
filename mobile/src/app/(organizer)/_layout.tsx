@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 
 export default function OrganizerLayout() {
@@ -25,9 +26,30 @@ export default function OrganizerLayout() {
       }}
     >
       {/* VISIBLE IN SIDEBAR */}
-      <Drawer.Screen name="dashboard" options={{ drawerLabel: '🏠 Home', title: 'Organizer Dashboard' }} />
-      <Drawer.Screen name="manage-event" options={{ drawerItemStyle: { display: 'none' }, title: 'Event Settings' }} />
-      <Drawer.Screen name="notifications" options={{ drawerLabel: 'Notifications', title: 'Notifications' }} />
+      <Drawer.Screen 
+        name="dashboard" 
+        options={{ 
+          drawerLabel: 'Home', 
+          title: 'Organizer Dashboard',
+          drawerIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />
+        }} 
+      />
+      <Drawer.Screen 
+        name="manage-event" 
+        options={{ 
+          drawerItemStyle: { display: 'none' }, 
+          title: 'Event Settings',
+          drawerIcon: ({ color, size }) => <Ionicons name="settings" color={color} size={size} />
+        }} 
+      />
+      <Drawer.Screen 
+        name="notifications" 
+        options={{ 
+          drawerLabel: 'Notifications', 
+          title: 'Notifications',
+          drawerIcon: ({ color, size }) => <Ionicons name="notifications" color={color} size={size} />
+        }} 
+      />
       
       {/* HIDDEN FROM SIDEBAR (But still accessible via clicks) */}
       <Drawer.Screen name="create-event" options={{ drawerItemStyle: { display: 'none' }, title: 'New Event' }} />

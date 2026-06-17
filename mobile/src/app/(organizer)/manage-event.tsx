@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 import { EventCreationController } from '../../event/EventCreationController';
 
@@ -75,7 +76,7 @@ export default function ManageEventDashboard() {
               pathname: '/(organizer)/edit-details',
               params: params
             })}>
-              <Text style={styles.gridIcon}>✏️</Text>
+              <Ionicons name="pencil" size={32} color={theme.colors.white} style={styles.gridIcon} />
               <Text style={styles.gridText}>Edit Details</Text>
             </Pressable>
 
@@ -83,7 +84,7 @@ export default function ManageEventDashboard() {
               pathname: '/(organizer)/send-announcement',
               params: params
             })}>
-              <Text style={styles.gridIcon}>📣</Text>
+              <Ionicons name="megaphone" size={32} color={theme.colors.white} style={styles.gridIcon} />
               <Text style={styles.gridText}>Send Announcement</Text>
             </Pressable>
 
@@ -91,12 +92,12 @@ export default function ManageEventDashboard() {
               pathname: '/(organizer)/review-refunds',
               params: params
             })}>
-              <Text style={styles.gridIcon}>💸</Text>
+              <Ionicons name="cash-outline" size={32} color={theme.colors.white} style={styles.gridIcon} />
               <Text style={styles.gridText}>Review Refunds</Text>
             </Pressable>
 
             <Pressable style={styles.gridItem} onPress={() => console.log('Exporting...')}>
-              <Text style={styles.gridIcon}>📥</Text>
+              <Ionicons name="download-outline" size={32} color={theme.colors.white} style={styles.gridIcon} />
               <Text style={styles.gridText}>Export Roster</Text>
             </Pressable>
           </View>
