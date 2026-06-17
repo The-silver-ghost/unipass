@@ -33,7 +33,7 @@ export default function EditDetailsScreen() {
     try {
       await EventCreationController.updateEvent(eventId, description, capNumber);
       Alert.alert('Success', 'Event details updated successfully!', [
-        { text: 'OK', onPress: () => router.dismissAll() }
+        { text: 'OK', onPress: () => router.replace('/(organizer)/dashboard') }
       ]);
     } catch (error: any) {
       Alert.alert('Save Failed', error.message);
