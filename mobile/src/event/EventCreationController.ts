@@ -134,8 +134,7 @@ export class EventCreationController {
   public static async cancelEvent(eventId: string): Promise<void> {
     try {
       const response = await fetch(`${API_BASE_URL}/events/${eventId}/cancel`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' }
+        method: 'PUT'
       });
       const result = await response.json();
       

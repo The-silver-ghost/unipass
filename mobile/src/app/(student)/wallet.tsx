@@ -97,6 +97,7 @@ export default function StudentWalletScreen() {
                   <Text style={styles.modalSubmitText}>Submit Request</Text>
                 </Pressable>
               </View>
+              </View>
             </View>
           </KeyboardAvoidingView>
         </Modal>
