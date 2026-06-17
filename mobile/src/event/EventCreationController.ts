@@ -21,6 +21,7 @@ export function mapDatabaseEventToEvent(dbEvent: any): Event {
     date: dbEvent.event_date,
     basePrice: typeof dbEvent.ticket_price === 'string' ? parseFloat(dbEvent.ticket_price) : dbEvent.ticket_price,
     capacity: Number(dbEvent.capacity),
+    status: dbEvent.status,
     createdAt: new Date(dbEvent.created_at)
   };
 
@@ -105,8 +106,8 @@ export class EventCreationController {
     try {
       const response = await fetch(`${API_BASE_URL}/events?organizerId=${organizerId}`);
       const result = await response.json();
-      
       if (!response.ok) throw new Error('Failed to retrieve events for organizer');
+      
       return result.events.map((e: any) => mapDatabaseEventToEvent(e));
     } catch (error) {
       console.error('[EventCreationController] Failed to fetch organizer directory:', error);
@@ -114,7 +115,7 @@ export class EventCreationController {
     }
   }
 
-  public static async updateEvent(eventId: string, description: string, capacity: number): Promise<Event> {
+  public static async updateEvent(eventId: string, description: string, capacity: number): Promise<void> {
     try {
       const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
         method: 'PUT',
@@ -124,7 +125,6 @@ export class EventCreationController {
       const result = await response.json();
       
       if (!response.ok) throw new Error(result.error || 'Failed to update event');
-      return mapDatabaseEventToEvent(result.event);
     } catch (error: any) {
       console.error('[EventCreationController] Failed to update event:', error);
       throw new Error(error.message || 'Network connection failed while updating event.');
@@ -142,6 +142,20 @@ export class EventCreationController {
     } catch (error: any) {
       console.error('[EventCreationController] Failed to cancel event:', error);
       throw new Error(error.message || 'Network connection failed while cancelling event.');
+    }
+  }
+
+  public static async deleteEvent(eventId: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
+        method: 'DELETE'
+      });
+      const result = await response.json();
+      
+      if (!response.ok) throw new Error(result.error || 'Failed to delete event');
+    } catch (error: any) {
+      console.error('[EventCreationController] Failed to delete event:', error);
+      throw new Error(error.message || 'Network connection failed while deleting event.');
     }
   }
 }

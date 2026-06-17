@@ -6,6 +6,7 @@ export interface EventConfig {
   date: string;
   basePrice: number;
   capacity: number;
+  status: string;
   createdAt: Date;
 }
 
@@ -17,6 +18,7 @@ export abstract class Event {
   public date: string;
   public basePrice: number;
   public capacity: number;
+  public status: string;
   public createdAt: Date;
 
   constructor(config: EventConfig) {
@@ -27,6 +29,7 @@ export abstract class Event {
     this.date = config.date;
     this.basePrice = config.basePrice;
     this.capacity = config.capacity;
+    this.status = config.status;
     this.createdAt = config.createdAt;
   }
 

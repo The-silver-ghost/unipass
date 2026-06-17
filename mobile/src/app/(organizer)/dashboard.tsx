@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View, ActivityIndicator, Alert } from 'react-native';
 import { theme } from '../../constants/theme';
 import { EventCreationController } from '../../event/EventCreationController';
 import { Event } from '../../event/Event';
@@ -101,23 +101,58 @@ export default function OrganizerDashboard() {
                   <Text style={styles.eventTitle}>{event.title}</Text>
                   <Text style={styles.eventDate}>{formattedDate} • {event.capacity} Capacity</Text>
                   <View style={styles.actionRow}>
-                    
-                    {/* Route: QR Code Scanner */}
-                    <Pressable style={styles.actionButtonPrimary} onPress={() => router.push('/(organizer)/scanner')}>
-                      <Text style={styles.actionTextPrimary}>Scan QR</Text>
-                    </Pressable>
-                    
-                    {/* Route: Event Management Hub */}
-                    <Pressable 
-                      style={styles.actionButtonSecondary} 
-                      onPress={() => router.push({
-                        pathname: '/(organizer)/manage-event',
-                        params: detailsParams
-                      })}
-                    >
-                      <Text style={styles.actionTextSecondary}>Manage</Text>
-                    </Pressable>
-                    
+                    {event.status === 'Cancelled' ? (
+                      <Pressable 
+                        style={[styles.actionButtonPrimary, { backgroundColor: theme.colors.brightRed }]} 
+                        onPress={() => {
+                          const canDelete = event.basePrice === 0;
+                          if (!canDelete) {
+                            Alert.alert("Cannot Delete", "Delete event is only allowed if all participants have been refunded, unless the event was free or no one has registered.");
+                            return;
+                          }
+                          
+                          Alert.alert(
+                            "Delete Event",
+                            "Are you sure you want to permanently delete this cancelled event?",
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              { 
+                                text: "Delete", 
+                                style: "destructive",
+                                onPress: async () => {
+                                  try {
+                                    await EventCreationController.deleteEvent(event.id);
+                                    setEvents(events.filter(e => e.id !== event.id));
+                                  } catch (e: any) {
+                                    Alert.alert("Error", e.message);
+                                  }
+                                }
+                              }
+                            ]
+                          );
+                        }}
+                      >
+                        <Text style={styles.actionTextPrimary}>Delete Event</Text>
+                      </Pressable>
+                    ) : (
+                      <>
+                        {/* Route: QR Code Scanner */}
+                        <Pressable style={styles.actionButtonPrimary} onPress={() => router.push('/(organizer)/scanner')}>
+                          <Text style={styles.actionTextPrimary}>Scan QR</Text>
+                        </Pressable>
+                        
+                        {/* Route: Event Management Hub */}
+                        <Pressable 
+                          style={styles.actionButtonSecondary} 
+                          onPress={() => router.push({
+                            pathname: '/(organizer)/manage-event',
+                            params: detailsParams
+                          })}
+                        >
+                          <Text style={styles.actionTextSecondary}>Manage</Text>
+                        </Pressable>
+                      </>
+                    )}
                   </View>
                 </View>
               );
