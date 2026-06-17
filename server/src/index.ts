@@ -14,15 +14,14 @@ app.get('/health', (req, res) => {
   res.json({ status: 'UniPass Server is awake and running!' });
 });
 
-// Real Event Creation Route connected to PostgreSQL
+//real Event Creation Route connected to PostgreSQL
 app.post('/api/events', async (req, res) => {
   try {
-    const { organizerId, title, description, eventDate, capacity, ticketPrice } = req.body;
+    const { organizerId, title, description, eventDate, capacity, ticketPrice, bankName, accountNumber, accountHolder } = req.body;
     
-    // Parameterized inputs ($1, $2, etc.) to prevent SQL Injection
     const sqlQuery = `
-      INSERT INTO "EVENT" (organizer_id, title, description, event_date, capacity, ticket_price, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO "EVENT" (organizer_id, title, description, event_date, capacity, ticket_price, status, bank_name, account_number, account_holder)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *; 
     `;
     
@@ -33,7 +32,10 @@ app.post('/api/events', async (req, res) => {
       eventDate, 
       capacity, 
       ticketPrice, 
-      'Published'
+      'Published',
+      bankName || null,
+      accountNumber || null,
+      accountHolder || null,
     ];
 
     const result = await pool.query(sqlQuery, values);
@@ -312,6 +314,45 @@ app.post('/api/payments', async (req, res) => {
   } catch (error: any) {
     console.error('[Server API] Payment error:', error.message);
     return res.status(500).json({ success: false, message: 'Payment processing failed.' });
+  }
+});
+
+app.get('/api/organizer/:organizerId/payments', async (req, res) => {
+  const { organizerId } = req.params;
+
+  try {
+    const result = await pool.query(
+      `SELECT 
+        p.id AS payment_id,
+        p.receipt_ref,
+        p.method,
+        p.amount,
+        p.status AS payment_status,
+        p.paid_at,
+        u.full_name AS student_name,
+        e.title AS event_title
+       FROM "PAYMENT_LOG" p
+       JOIN "REGISTRATION" r ON r.id = p.registration_id
+       JOIN "USER" u ON u.id = r.student_id
+       JOIN "EVENT" e ON e.id = r.event_id
+       WHERE e.organizer_id = $1
+       ORDER BY p.paid_at DESC`,
+      [organizerId]
+    );
+
+    const totalRevenue = result.rows.reduce((sum: number, row: any) => sum + parseFloat(row.amount), 0);
+
+    console.log(`[Server API] Fetched ${result.rows.length} payments for organizer ${organizerId}`);
+
+    return res.status(200).json({
+      success: true,
+      totalRevenue: totalRevenue.toFixed(2),
+      transactions: result.rows
+    });
+
+  } catch (error: any) {
+    console.error('[Server API] Failed to fetch organizer payments:', error.message);
+    return res.status(500).json({ success: false, message: 'Failed to fetch payment data.' });
   }
 });
 
