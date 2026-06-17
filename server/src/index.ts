@@ -52,6 +52,33 @@ app.post('/api/events', async (req, res) => {
   }
 });
 
+// GET Route to retrieve events with optional organizer filter
+app.get('/api/events', async (req, res) => {
+  try {
+    const { organizerId } = req.query;
+    console.log(`[Server API] Fetching events. Organizer Filter: ${organizerId || 'None'}`);
+
+    let sqlQuery = `SELECT * FROM "EVENT"`;
+    const values: any[] = [];
+
+    if (organizerId) {
+      sqlQuery += ` WHERE organizer_id = $1`;
+      values.push(organizerId);
+    }
+
+    sqlQuery += ` ORDER BY event_date ASC;`;
+
+    const result = await pool.query(sqlQuery, values);
+    
+    console.log(`[Server API] Success: Retrieved ${result.rows.length} events.`);
+    res.status(200).json({ events: result.rows });
+
+  } catch (error: any) {
+    console.error('[Server API] Database retrieval error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch events from database' });
+  }
+});
+
 app.post('/api/register', async (req, res) => {
     const { name, email, password, role } = req.body;
     console.log(`[Server API] Received registration for: ${email}`);
