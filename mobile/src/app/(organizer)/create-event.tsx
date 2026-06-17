@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { theme } from '../../constants/theme';
 import { EventCreationController } from '../../event/EventCreationController';
+import { userSession } from '../../usr/UserSession';
 
 export default function CreateEventScreen() {
   const router = useRouter();
@@ -30,9 +31,12 @@ export default function CreateEventScreen() {
     // Because the DatePicker guarantees a valid Date object, we just convert it directly!
     const isoDateString = date.toISOString();
 
+    const sessionUser = userSession.getUser();
+    const organizerId = sessionUser?.id || '41e2bc68-e878-4713-9726-9aafffc0af71';
+
     try {
       await EventCreationController.createNewEvent({
-        organizerId: '41e2bc68-e878-4713-9726-9aafffc0af71',
+        organizerId,
         title,
         date: isoDateString, 
         description,

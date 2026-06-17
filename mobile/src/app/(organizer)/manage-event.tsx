@@ -1,11 +1,16 @@
 import React from 'react';
 import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { theme } from '../../constants/theme';
 
 export default function ManageEventDashboard() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+
+  const title = params.title as string || 'Event Details';
+  const capacity = params.capacity as string || '0';
+  const price = params.price as string || 'Free';
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
@@ -19,15 +24,15 @@ export default function ManageEventDashboard() {
             <Text style={styles.pageTitle}>Manage Event</Text>
           </View>
 
-          <Text style={styles.eventSubtitle}>Campus Music Fest</Text>
+          <Text style={styles.eventSubtitle}>{title}</Text>
 
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>412</Text>
-              <Text style={styles.statLabel}>Sold / 500</Text>
+              <Text style={styles.statNumber}>0</Text>
+              <Text style={styles.statLabel}>Sold / {capacity}</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>3</Text>
+              <Text style={styles.statNumber}>0</Text>
               <Text style={styles.statLabel}>Pending Refunds</Text>
             </View>
           </View>
@@ -35,17 +40,26 @@ export default function ManageEventDashboard() {
           <Text style={styles.sectionTitle}>Event Tools</Text>
 
           <View style={styles.gridContainer}>
-            <Pressable style={styles.gridItem} onPress={() => router.push('/(organizer)/edit-details')}>
+            <Pressable style={styles.gridItem} onPress={() => router.push({
+              pathname: '/(organizer)/edit-details',
+              params: params
+            })}>
               <Text style={styles.gridIcon}>✏️</Text>
               <Text style={styles.gridText}>Edit Details</Text>
             </Pressable>
 
-            <Pressable style={styles.gridItem} onPress={() => router.push('/(organizer)/send-announcement')}>
+            <Pressable style={styles.gridItem} onPress={() => router.push({
+              pathname: '/(organizer)/send-announcement',
+              params: params
+            })}>
               <Text style={styles.gridIcon}>📣</Text>
               <Text style={styles.gridText}>Send Announcement</Text>
             </Pressable>
 
-            <Pressable style={styles.gridItem} onPress={() => router.push('/(organizer)/review-refunds')}>
+            <Pressable style={styles.gridItem} onPress={() => router.push({
+              pathname: '/(organizer)/review-refunds',
+              params: params
+            })}>
               <Text style={styles.gridIcon}>💸</Text>
               <Text style={styles.gridText}>Review Refunds</Text>
             </Pressable>
