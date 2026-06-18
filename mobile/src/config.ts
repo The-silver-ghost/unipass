@@ -1,17 +1,16 @@
-// src/config.ts
-// Centralized configuration that pulls from environment variables
+// Toggle this switch depending on where you are testing:
+const ENVIRONMENT = 'android-emulator';
 
-const ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT || 'web-local';
-const COMP_IP = process.env.EXPO_PUBLIC_COMP_IP || 'localhost';
+// Your computer's local IPv4 address (Only needed if testing on a physical phone via Wi-Fi)
+const COMP_IP = '172.20.10.2'; 
 
-let API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
+let API_BASE_URL = 'http://localhost:5000/api';
 
-if (!process.env.EXPO_PUBLIC_API_URL) {
-  if (ENVIRONMENT === 'android-emulator') {
+if (ENVIRONMENT === 'android-emulator') {
     API_BASE_URL = 'http://10.0.2.2:5000/api';
-  } else if (ENVIRONMENT === 'physical-device') {
+} 
+else if (ENVIRONMENT === 'physical-device') {
     API_BASE_URL = `http://${COMP_IP}:5000/api`;
-  }
 }
 
 export { API_BASE_URL };
