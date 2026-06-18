@@ -1,5 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, Pressable, ScrollView, SafeAreaView, Alert, Platform, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, Text, View, TextInput, Pressable, ScrollView,  Alert, Platform, KeyboardAvoidingView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -16,8 +17,11 @@ export default function CreateEventScreen() {
   const [capacityInput, setCapacityInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date(new Date().getTime() + 60 * 60 * 1000)); // Default +1 hour
   const [showPicker, setShowPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
+  const [endPickerMode, setEndPickerMode] = useState<'date' | 'time'>('date');
 
   // Payout account states
   const [bankName, setBankName] = useState('');
@@ -32,6 +36,7 @@ export default function CreateEventScreen() {
     
     const capacity = capacityInput.trim() === '' ? 0 : parseInt(capacityInput, 10);
     const isoDateString = date.toISOString();
+    const isoEndDateString = endDate.toISOString();
     const sessionUser = userSession.getUser();
     const organizerId = sessionUser?.id || 'ec52b657-01ca-47fc-bf41-a1ee9fb094f2';
 
@@ -40,6 +45,7 @@ export default function CreateEventScreen() {
         organizerId,
         title,
         date: isoDateString,
+        endDate: isoEndDateString,
         description,
         basePrice,
         capacity,
@@ -83,7 +89,7 @@ export default function CreateEventScreen() {
                 onChangeText={setTitle}
               />
 
-              <Text style={styles.inputLabel}>Event Date & Time</Text>
+              <Text style={styles.inputLabel}>Event Start</Text>
               <View style={styles.dateTimeRow}>
                 <Pressable 
                   style={[styles.input, { flex: 1, marginRight: 8 }]} 
@@ -107,14 +113,55 @@ export default function CreateEventScreen() {
                   value={date}
                   mode={pickerMode}
                   display="default"
-                  onChange={(event, selectedDate) => {
+                  onValueChange={(event, selectedDate) => {
                     if (Platform.OS === 'android') setShowPicker(false);
-                    if (event.type === 'set' && selectedDate) {
+                    if (selectedDate) {
                       setDate(selectedDate);
-                    } else if (event.type === 'dismissed') {
-                      setShowPicker(false);
+                      if (selectedDate > endDate) {
+                        setEndDate(new Date(selectedDate.getTime() + 60 * 60 * 1000));
+                      }
                     }
                   }}
+                  onDismiss={() => setShowPicker(false)}
+                />
+              )}
+
+              <Text style={styles.inputLabel}>Event End</Text>
+              <View style={styles.dateTimeRow}>
+                <Pressable 
+                  style={[styles.input, { flex: 1, marginRight: 8 }]} 
+                  onPress={() => { setEndPickerMode('date'); setShowEndPicker(true); }}
+                >
+                  <Text style={styles.dateText}>{endDate.toLocaleDateString()}</Text>
+                </Pressable>
+                
+                <Pressable 
+                  style={[styles.input, { flex: 1, marginLeft: 8 }]} 
+                  onPress={() => { setEndPickerMode('time'); setShowEndPicker(true); }}
+                >
+                  <Text style={styles.dateText}>
+                    {endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {showEndPicker && (
+                <DateTimePicker
+                  value={endDate}
+                  mode={endPickerMode}
+                  display="default"
+                  onValueChange={(event, selectedDate) => {
+                    if (Platform.OS === 'android') setShowEndPicker(false);
+                    if (selectedDate) {
+                      if (selectedDate < date) {
+                        Alert.alert('Invalid Date', 'End date cannot be earlier than start date.');
+                        setEndDate(new Date(date.getTime() + 60 * 60 * 1000));
+                      } else {
+                        setEndDate(selectedDate);
+                      }
+                    }
+                  }}
+                  onDismiss={() => setShowEndPicker(false)}
                 />
               )}
 

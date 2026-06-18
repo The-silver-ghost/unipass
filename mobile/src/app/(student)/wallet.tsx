@@ -1,28 +1,89 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, TextInput, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView,  Pressable, TextInput, Modal, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import QRCode from 'react-native-qrcode-svg';
 import { theme } from '../../constants/theme';
+import { API_BASE_URL } from '../../config';
+import { userSession } from '../../usr/UserSession';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function StudentWalletScreen() {
-  const [activeQR, setActiveQR] = useState<string | null>(null);
-  const [refundPassId, setRefundPassId] = useState<string | null>(null);
+  const router = useRouter();
+  const [passes, setPasses] = useState<any[]>([]);
+  const [activePass, setActivePass] = useState<any | null>(null);
+  const [refundPass, setRefundPass] = useState<any | null>(null);
   const [refundReason, setRefundReason] = useState<'schedule' | 'sick' | 'other'>('schedule');
   const [otherText, setOtherText] = useState('');
 
-  if (activeQR) {
+  const fetchPasses = async () => {
+    try {
+      const user = userSession.getUser();
+      if (!user) return;
+      const res = await fetch(`${API_BASE_URL}/student/${user.id}/passes`);
+      const data = await res.json();
+      if (data.passes) {
+        setPasses(data.passes.filter((p: any) => !p.is_hidden));
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchPasses();
+  }, []);
+
+  const handleRefundOrCancel = async () => {
+    if (!refundPass) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/refunds/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ epassId: refundPass.epass_id })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      
+      Alert.alert('Success', data.message);
+      setRefundPass(null);
+      fetchPasses();
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const handleDelete = async (epassId: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/epass/${epassId}/hide`, { method: 'PUT' });
+      if (res.ok) {
+        fetchPasses();
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  if (activePass) {
     return (
       <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
         <SafeAreaView style={styles.qrFullscreen}>
-          <Pressable onPress={() => setActiveQR(null)} style={styles.qrBackButton}>
+          <Pressable onPress={() => setActivePass(null)} style={styles.qrBackButton}>
             <Text style={styles.qrBackButtonText}>← Back to Wallet</Text>
           </Pressable>
           
           <View style={styles.qrContent}>
-            <Text style={styles.qrTitle}>Campus Music Fest</Text>
-            <Text style={styles.qrSubtitle}>General Admission</Text>
+            <Text style={styles.qrTitle}>{activePass.title}</Text>
+            <Text style={styles.qrSubtitle}>{activePass.state}</Text>
             
             <View style={styles.qrPlaceholder}>
-              <Text style={styles.qrPlaceholderText}>[ QR CODE RENDER ]</Text>
+              <QRCode 
+                value={activePass.qr_code}
+                size={240}
+                backgroundColor="transparent"
+                color={theme.colors.bgDark}
+              />
             </View>
             
             <Text style={styles.qrInstruction}>Turn up your screen brightness and present this at the entrance.</Text>
@@ -36,67 +97,94 @@ export default function StudentWalletScreen() {
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
         <View style={styles.headerRow}>
+          <Pressable onPress={() => router.back()} style={styles.topBackButton}>
+            <Text style={styles.topBackButtonText}>← Back</Text>
+          </Pressable>
           <Text style={styles.pageTitle}>My E-Passes</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={[theme.glassmorphism, styles.card]}>
-            <View style={styles.cardInfo}>
-              <Text style={styles.eventTitle}>Campus Music Fest</Text>
-              <Text style={styles.eventDetails}>May 28 • Main Hall</Text>
-              <Text style={styles.eventStatus}>Valid Ticket</Text>
-            </View>
-            
-            <View style={styles.cardActions}>
-              <Pressable style={styles.qrButton} onPress={() => setActiveQR('pass_123')}>
-                <Text style={styles.qrButtonText}>Show QR</Text>
-              </Pressable>
-              <Pressable style={styles.refundButton} onPress={() => setRefundPassId('pass_123')}>
-                <Text style={styles.refundButtonText}>Refund</Text>
-              </Pressable>
-            </View>
-          </View>
+          {passes.map(pass => {
+            const isFree = parseFloat(pass.ticket_price) === 0;
+            const eventEnded = pass.event_end_date ? new Date(pass.event_end_date).getTime() < new Date().getTime() : false;
+            const showQR = pass.state.toLowerCase() === 'active' || pass.state.toLowerCase() === 'issued';
+            const canRefund = showQR && !eventEnded;
+            const canDelete = !showQR || eventEnded || pass.state.toLowerCase() === 'cancelled' || pass.state.toLowerCase() === 'refunded';
+
+            return (
+              <View key={pass.epass_id} style={[theme.glassmorphism, styles.card]}>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.eventTitle}>{pass.title}</Text>
+                  <Text style={styles.eventDetails}>{new Date(pass.event_date).toLocaleDateString()}</Text>
+                  <Text style={[styles.eventStatus, pass.state === 'Active' ? {} : {color: theme.colors.textMuted}]}>
+                    {eventEnded ? 'Expired' : pass.state}
+                  </Text>
+                </View>
+                
+                <View style={styles.cardActions}>
+                  {!eventEnded && showQR && (
+                    <Pressable style={styles.qrButton} onPress={() => setActivePass(pass)}>
+                      <Text style={styles.qrButtonText}>Show QR</Text>
+                    </Pressable>
+                  )}
+                  {canRefund && (
+                    <Pressable style={styles.refundButton} onPress={() => setRefundPass(pass)}>
+                      <Text style={styles.refundButtonText}>{isFree ? 'Cancel' : 'Refund'}</Text>
+                    </Pressable>
+                  )}
+                  {canDelete && (
+                    <Pressable style={[styles.refundButton, {borderColor: '#555'}]} onPress={() => handleDelete(pass.epass_id)}>
+                      <Text style={[styles.refundButtonText, {color: '#555'}]}>Delete</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+            );
+          })}
         </ScrollView>
 
-        <Modal visible={!!refundPassId} transparent animationType="fade">
+        <Modal visible={!!refundPass} transparent animationType="fade">
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
             <View style={styles.modalOverlay}>
               <View style={[theme.glassmorphism, styles.modalContent]}>
-                <Text style={styles.modalTitle}>Request Refund</Text>
-              <Text style={styles.modalSubtext}>Please select a reason for canceling your E-Pass.</Text>
-              
-              <View style={styles.reasonGroup}>
-                <Pressable onPress={() => setRefundReason('schedule')} style={styles.radioRow}>
-                  <Text style={refundReason === 'schedule' ? styles.radioSelected : styles.radioUnselected}>◉ Schedule Conflict</Text>
-                </Pressable>
-                <Pressable onPress={() => setRefundReason('sick')} style={styles.radioRow}>
-                  <Text style={refundReason === 'sick' ? styles.radioSelected : styles.radioUnselected}>◉ Medical / Sick</Text>
-                </Pressable>
-                <Pressable onPress={() => setRefundReason('other')} style={styles.radioRow}>
-                  <Text style={refundReason === 'other' ? styles.radioSelected : styles.radioUnselected}>◉ Other</Text>
-                </Pressable>
-              </View>
+                <Text style={styles.modalTitle}>Cancel / Refund Pass</Text>
+                <Text style={styles.modalSubtext}>Please select a reason.</Text>
+                
+                <View style={styles.reasonGroup}>
+                  <Pressable onPress={() => setRefundReason('schedule')} style={styles.radioRow}>
+                    <Ionicons name={refundReason === 'schedule' ? "radio-button-on" : "radio-button-off"} size={20} color={theme.colors.white} style={{ marginRight: 8 }} />
+                    <Text style={refundReason === 'schedule' ? styles.radioSelected : styles.radioUnselected}>Schedule Conflict</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setRefundReason('sick')} style={styles.radioRow}>
+                    <Ionicons name={refundReason === 'sick' ? "radio-button-on" : "radio-button-off"} size={20} color={theme.colors.white} style={{ marginRight: 8 }} />
+                    <Text style={refundReason === 'sick' ? styles.radioSelected : styles.radioUnselected}>Medical / Sick</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setRefundReason('other')} style={styles.radioRow}>
+                    <Ionicons name={refundReason === 'other' ? "radio-button-on" : "radio-button-off"} size={20} color={theme.colors.white} style={{ marginRight: 8 }} />
+                    <Text style={refundReason === 'other' ? styles.radioSelected : styles.radioUnselected}>Other</Text>
+                  </Pressable>
+                </View>
 
-              {refundReason === 'other' && (
-                <TextInput 
-                  style={[styles.input, styles.textArea]} 
-                  placeholder="Please explain your reason..." 
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  multiline 
-                  numberOfLines={3}
-                  value={otherText}
-                  onChangeText={setOtherText}
-                />
-              )}
+                {refundReason === 'other' && (
+                  <TextInput 
+                    style={[styles.input, styles.textArea]} 
+                    placeholder="Please explain your reason..." 
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    multiline 
+                    numberOfLines={3}
+                    value={otherText}
+                    onChangeText={setOtherText}
+                  />
+                )}
 
-              <View style={styles.modalActions}>
-                <Pressable onPress={() => setRefundPassId(null)} style={styles.modalCancelBtn}>
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </Pressable>
-                <Pressable style={styles.modalSubmitBtn}>
-                  <Text style={styles.modalSubmitText}>Submit Request</Text>
-                </Pressable>
-              </View>
+                <View style={styles.modalActions}>
+                  <Pressable onPress={() => setRefundPass(null)} style={styles.modalCancelBtn}>
+                    <Text style={styles.modalCancelText}>Go Back</Text>
+                  </Pressable>
+                  <Pressable style={styles.modalSubmitBtn} onPress={handleRefundOrCancel}>
+                    <Text style={styles.modalSubmitText}>Confirm</Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           </KeyboardAvoidingView>
@@ -128,15 +216,17 @@ const styles = StyleSheet.create({
   qrContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 60 },
   qrTitle: { color: theme.colors.white, fontSize: 26, fontWeight: 'bold', textAlign: 'center' },
   qrSubtitle: { color: theme.colors.brightRed, fontSize: 16, fontWeight: '600', marginTop: 8, marginBottom: 40, textTransform: 'uppercase', letterSpacing: 2 },
-  qrPlaceholder: { width: 280, height: 280, backgroundColor: theme.colors.white, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  qrPlaceholder: { width: 280, height: 280, backgroundColor: theme.colors.white, borderRadius: 20, alignItems: 'center', justifyContent: 'center', padding: 20 },
   qrPlaceholderText: { color: theme.colors.bgDark, fontWeight: '900', fontSize: 18 },
-  qrInstruction: { color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', marginTop: 40, paddingHorizontal: 40, lineHeight: 22 },
+  qrInstruction: { color: theme.colors.textMuted, fontSize: 14, textAlign: 'center', marginTop: 24 },
+  topBackButton: { alignSelf: 'flex-start', marginBottom: 16, padding: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 8 },
+  topBackButtonText: { color: theme.colors.white, fontWeight: '600' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 24 },
   modalContent: { padding: 24, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   modalTitle: { color: theme.colors.white, fontSize: 22, fontWeight: 'bold', marginBottom: 8 },
   modalSubtext: { color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 20 },
   reasonGroup: { marginBottom: 20 },
-  radioRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  radioRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
   radioUnselected: { color: 'rgba(255,255,255,0.5)', fontSize: 16 },
   radioSelected: { color: theme.colors.brightRed, fontSize: 16, fontWeight: 'bold' },
   input: { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 12, padding: 16, color: theme.colors.white, fontSize: 16, marginBottom: 20 },

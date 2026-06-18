@@ -1,12 +1,48 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, Text, View, ScrollView,  Pressable, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { theme } from '../../constants/theme';
+import { API_BASE_URL } from '../../config';
 
 export default function SendAnnouncementScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [announcement, setAnnouncement] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const eventId = params.id as string;
+  const organizerId = params.organizerId as string;
+  const eventTitle = params.title as string;
+
+  const handleSend = async () => {
+    if (!announcement.trim()) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/notifications/broadcast`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizerId,
+          eventId,
+          message: announcement
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Announcement sent successfully!');
+        router.back();
+      } else {
+        alert(data.message || 'Failed to send announcement');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error sending announcement');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
@@ -22,7 +58,7 @@ export default function SendAnnouncementScreen() {
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
             <View style={[theme.glassmorphism, styles.card]}>
               <Text style={styles.cardHeader}>Broadcast Notification</Text>
-              <Text style={styles.cardSubtext}>This will send a push notification to all students holding an E-Pass for Campus Music Fest.</Text>
+              <Text style={styles.cardSubtext}>This will send a push notification to all students holding an E-Pass for {eventTitle || 'this event'}.</Text>
               
               <View style={styles.inputGroup}>
                 <TextInput 
@@ -35,8 +71,12 @@ export default function SendAnnouncementScreen() {
                 />
               </View>
               
-              <Pressable style={styles.primaryButton} onPress={() => router.back()}>
-                <Text style={styles.primaryButtonText}>Send Announcement</Text>
+              <Pressable 
+                style={[styles.primaryButton, loading && { opacity: 0.5 }]} 
+                onPress={handleSend}
+                disabled={loading}
+              >
+                <Text style={styles.primaryButtonText}>{loading ? 'Sending...' : 'Send Announcement'}</Text>
               </Pressable>
             </View>
           </ScrollView>

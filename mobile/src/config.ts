@@ -1,8 +1,8 @@
 // Toggle this switch depending on where you are testing:
 const ENVIRONMENT = 'android-emulator';
 
-// Your computer's local IPv4 address (Only needed if testing on a physical phone via Wi-Fi)
-const COMP_IP = '172.20.10.2'; 
+const ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT || 'physical-device';
+const COMP_IP = process.env.EXPO_PUBLIC_COMP_IP || '192.168.0.208';
 
 let API_BASE_URL = 'http://localhost:5000/api';
 

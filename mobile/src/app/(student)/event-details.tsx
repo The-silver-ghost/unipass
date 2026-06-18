@@ -1,5 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import { StyleSheet, Text, View, ScrollView,  Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { theme } from '../../constants/theme';
@@ -17,6 +18,7 @@ export default function EventDetailsScreen() {
   const rawPrice = params.rawPrice as string || '0';
   const capacity = params.capacity as string || '0';
   const organizerId = params.organizerId as string || '';
+  const isRegistered = params.isRegistered === 'true';
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
@@ -50,23 +52,32 @@ export default function EventDetailsScreen() {
         
         {/* Sticky Bottom Checkout Bar */}
         <View style={styles.stickyBottom}>
-          <Pressable 
-            style={styles.checkoutButton} 
-            onPress={() => router.push({
-              pathname: '/(student)/checkout',
-              params: {
-                id,
-                title,
-                price,
-                rawPrice,
-                date,
-                capacity,
-                organizerId
-              }
-            })}
-          >
-            <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
-          </Pressable>
+          {isRegistered ? (
+            <Pressable 
+              style={[styles.checkoutButton, { backgroundColor: 'rgba(255,255,255,0.1)' }]} 
+              onPress={() => router.push('/(student)/wallet')}
+            >
+              <Text style={[styles.checkoutButtonText, { color: theme.colors.white }]}>Joined - View E-Pass</Text>
+            </Pressable>
+          ) : (
+            <Pressable 
+              style={styles.checkoutButton} 
+              onPress={() => router.push({
+                pathname: '/(student)/checkout',
+                params: {
+                  id,
+                  title,
+                  price,
+                  rawPrice,
+                  date,
+                  capacity,
+                  organizerId
+                }
+              })}
+            >
+              <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
+            </Pressable>
+          )}
         </View>
       </SafeAreaView>
     </LinearGradient>

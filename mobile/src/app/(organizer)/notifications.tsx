@@ -1,17 +1,45 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView,  Pressable, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { theme } from '../../constants/theme';
+import { API_BASE_URL } from '../../config';
+import { userSession } from '../../usr/UserSession';
+
+type Notification = {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  isUnread: boolean;
+};
 
 export default function OrganizerNotificationsScreen() {
   const router = useRouter();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const notifications = [
-    { id: '1', title: 'Ticket Sold!', message: 'A student purchased an E-Pass for Campus Music Fest.', time: '5 mins ago', isUnread: true },
-    { id: '2', title: 'Refund Request', message: 'Sanjeevan requested a refund for Campus Music Fest.', time: '1 hour ago', isUnread: true },
-    { id: '3', title: 'Milestone Reached!', message: 'Campus Music Fest is 50% Sold Out!', time: '3 hours ago', isUnread: false },
-  ];
+  useEffect(() => {
+    async function loadNotifications() {
+      try {
+        const sessionUser = userSession.getUser();
+        if (!sessionUser) return;
+
+        const res = await fetch(`${API_BASE_URL}/organizer/${sessionUser.id}/notifications`);
+        if (res.ok) {
+          const data = await res.json();
+          setNotifications(data.notifications || []);
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadNotifications();
+  }, []);
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
@@ -24,15 +52,23 @@ export default function OrganizerNotificationsScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {notifications.map((notif) => (
-            <View key={notif.id} style={[theme.glassmorphism, styles.card, notif.isUnread && styles.unreadCard]}>
-              <View style={styles.cardHeader}>
-                <Text style={[styles.cardTitle, notif.isUnread && styles.unreadText]}>{notif.title}</Text>
-                <Text style={styles.timeText}>{notif.time}</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color={theme.colors.brightRed} />
+          ) : notifications.length === 0 ? (
+            <Text style={{ color: theme.colors.textMuted, textAlign: 'center', marginTop: 40 }}>
+              No notifications yet.
+            </Text>
+          ) : (
+            notifications.map((notif) => (
+              <View key={notif.id} style={[theme.glassmorphism, styles.card, notif.isUnread && styles.unreadCard]}>
+                <View style={styles.cardHeader}>
+                  <Text style={[styles.cardTitle, notif.isUnread && styles.unreadText]}>{notif.title}</Text>
+                  <Text style={styles.timeText}>{notif.time}</Text>
+                </View>
+                <Text style={styles.messageText}>{notif.message}</Text>
               </View>
-              <Text style={styles.messageText}>{notif.message}</Text>
-            </View>
-          ))}
+            ))
+          )}
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>

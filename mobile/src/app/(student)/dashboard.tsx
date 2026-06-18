@@ -1,15 +1,19 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, Pressable, SafeAreaView, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Pressable,  ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { theme } from '../../constants/theme';
+import { API_BASE_URL } from '../../config';
 import { EventCreationController } from '../../event/EventCreationController';
 import { Event } from '../../event/Event';
 import { userSession } from '../../usr/UserSession';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function StudentDashboard() {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
+  const [registeredEvents, setRegisteredEvents] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [studentName, setStudentName] = useState('Harvind');
 
@@ -25,6 +29,14 @@ export default function StudentDashboard() {
       try {
         const fetched = await EventCreationController.getPublishedEvents();
         setEvents(fetched);
+        
+        if (sessionUser?.id) {
+          const regRes = await fetch(`${API_BASE_URL}/student/${sessionUser.id}/registrations`);
+          if (regRes.ok) {
+            const regData = await regRes.json();
+            setRegisteredEvents(regData.eventIds || []);
+          }
+        }
       } catch (error) {
         console.error('[StudentDashboard] Error loading events:', error);
       } finally {
@@ -41,13 +53,17 @@ export default function StudentDashboard() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           
           <View style={styles.header}>
-            <Text style={styles.greeting}>Hello, {studentName} 👋</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={[styles.greeting, { marginBottom: 0, marginRight: 8 }]}>Hello, {studentName}</Text>
+              <Ionicons name="hand-right" size={24} color="#FFD700" />
+            </View>
             <Text style={styles.pageTitle}>Discover Events</Text>
           </View>
 
           {/* Route: Student E-Pass Wallet */}
           <Pressable style={styles.walletButton} onPress={() => router.push('/(student)/wallet')}>
-            <Text style={styles.walletButtonText}>🎟️ Open My E-Pass Wallet</Text>
+            <Ionicons name="ticket" size={20} color={theme.colors.white} style={{ marginRight: 8 }} />
+            <Text style={styles.walletButtonText}>Open My E-Pass Wallet</Text>
           </Pressable>
 
           {loading ? (
@@ -74,7 +90,8 @@ export default function StudentDashboard() {
                 price: formattedPrice,
                 rawPrice: event.basePrice.toString(),
                 capacity: event.capacity.toString(),
-                organizerId: event.organizerId
+                organizerId: event.organizerId,
+                isRegistered: registeredEvents.includes(event.id) ? 'true' : 'false'
               };
 
               return (
@@ -96,15 +113,24 @@ export default function StudentDashboard() {
                   <Text style={styles.eventCapacity}>🎟️ {event.capacity} Spots Total</Text>
                   
                   {/* Route: Event Details Page */}
-                  <Pressable 
-                    style={styles.buyButton} 
-                    onPress={() => router.push({
-                      pathname: '/(student)/event-details',
-                      params: navParams
-                    })}
-                  >
-                    <Text style={styles.buyButtonText}>Get E-Pass</Text>
-                  </Pressable>
+                  {registeredEvents.includes(event.id) ? (
+                    <Pressable 
+                      style={[styles.buyButton, { backgroundColor: 'rgba(255,255,255,0.1)' }]} 
+                      onPress={() => router.push('/(student)/wallet')}
+                    >
+                      <Text style={[styles.buyButtonText, { color: theme.colors.white }]}>Joined</Text>
+                    </Pressable>
+                  ) : (
+                    <Pressable 
+                      style={styles.buyButton} 
+                      onPress={() => router.push({
+                        pathname: '/(student)/event-details',
+                        params: navParams
+                      })}
+                    >
+                      <Text style={styles.buyButtonText}>Get E-Pass</Text>
+                    </Pressable>
+                  )}
                 </Pressable>
               );
             })
@@ -122,7 +148,7 @@ const styles = StyleSheet.create({
   header: { marginBottom: 20 },
   greeting: { color: theme.colors.textMuted, fontSize: 16, marginBottom: 4 },
   pageTitle: { color: theme.colors.white, fontSize: 32, fontWeight: '800' },
-  walletButton: { backgroundColor: 'rgba(255,255,255,0.1)', padding: 16, borderRadius: 12, marginBottom: 30, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  walletButton: { backgroundColor: 'rgba(255,255,255,0.1)', padding: 16, borderRadius: 12, marginBottom: 30, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   walletButtonText: { color: theme.colors.white, fontWeight: '700', fontSize: 16 },
   eventCard: { padding: 20, marginBottom: 20 },
   eventHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
