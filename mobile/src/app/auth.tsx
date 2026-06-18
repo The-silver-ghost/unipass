@@ -8,32 +8,27 @@ import { handleRegistration } from '../usr/RegistrationController';
 import { API_BASE_URL } from '../config';
 import { userSession } from '../usr/UserSession';
 
+import { useDebugPause, triggerTerminalResume } from '../utils/debugPause';
+
 export default function AuthScreen() {
   const router = useRouter();
-  
-  // 1. READ PARAMS PASSED FROM THE LANDING PAGE
-  // Expects the landing page to route like: router.push('/auth?selectedRole=student')
   const params = useLocalSearchParams();
+  const { pauseDebug } = useDebugPause();
   
   const [stage, setStage] = useState(1);
-  
-  // Initialize role based on selection, default to student if something goes wrong
   const [role, setRole] = useState<'student' | 'organizer'>('student');
 
-  // Update role dynamically if params change
   useEffect(() => {
     if (params.selectedRole === 'student' || params.selectedRole === 'organizer') {
       setRole(params.selectedRole);
     }
   }, [params.selectedRole]);
 
-  // Input states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nameOrClub, setNameOrClub] = useState('');
   const [studentID, setStudentID] = useState('');
 
-  // LOGIN HANDLER
   const handleLoginSubmit = async () => {
     if (!email || !password) {
       if (typeof alert !== 'undefined') alert("Please fill up both Email and Password to log in.");
@@ -42,6 +37,9 @@ export default function AuthScreen() {
     } 
 
     try {
+      // Dump raw email and target URL before fetch
+      await pauseDebug({ email, url: `${API_BASE_URL}/login` });
+
       console.log(`[Web Client Test] Attempting login for: ${email}`);
       const backendUrl = `${API_BASE_URL}/login`; 
 
@@ -51,7 +49,13 @@ export default function AuthScreen() {
         body: JSON.stringify({ email, password })
       });
 
+      // Dump raw fetch response metadata
+      await pauseDebug({ status: response.status, ok: response.ok });
+
       const data = await response.json();
+
+      // Dump raw json data received
+      await pauseDebug(data);
 
       if (!response.ok) {
         throw new Error(data.message || "Invalid credentials");
@@ -64,6 +68,9 @@ export default function AuthScreen() {
         role: data.user.role.toLowerCase() as 'student' | 'organizer',
       });
 
+      // Dump session data after mapping it locally
+      await pauseDebug(userSession.getUser());
+
       if (typeof alert !== 'undefined') alert(`Welcome Back, ${data.user.full_name}!`);
       else Alert.alert("Welcome Back!", `Logged in successfully as ${data.user.full_name}`);
       
@@ -74,35 +81,33 @@ export default function AuthScreen() {
       }
 
     } catch (error: any) {
+      // Dump raw error details
+      await pauseDebug({ error: error.message });
+
       if (typeof alert !== 'undefined') alert(`Login Failed: ${error.message}`);
       else Alert.alert("Login Failed", error.message);
     }
   };
 
   const handleNextStage = () => {
-      // Check if either field is missing or contains only empty spaces
-      if (!email.trim() || !password.trim()) {
-        if (typeof alert !== 'undefined') {
-          alert("Please fill up both Email and Password to begin registration.");
-        } else {
-          Alert.alert("Input Error", "Please fill up both Email and Password to begin registration.");
-        }
-        return; // Stop execution here so it doesn't change stages
+    if (!email.trim() || !password.trim()) {
+      if (typeof alert !== 'undefined') {
+        alert("Please fill up both Email and Password to begin registration.");
+      } else {
+        Alert.alert("Input Error", "Please fill up both Email and Password to begin registration.");
       }
+      return; 
+    }
 
-      // Basic email syntax safety check (optional but recommended)
-      if (!email.includes('@')) {
-        if (typeof alert !== 'undefined') alert("Please enter a valid email address.");
-        else Alert.alert("Input Error", "Please enter a valid email address.");
-        return;
-      }
+    if (!email.includes('@')) {
+      if (typeof alert !== 'undefined') alert("Please enter a valid email address.");
+      else Alert.alert("Input Error", "Please enter a valid email address.");
+      return;
+    }
 
-      // If validation passes, move forward safely
-      setStage(2);
-    };  
+    setStage(2);
+  };  
 
-
-  // REGISTER HANDLER
   const handleSignUpFormSubmit = async () => {
     const registrationPayload: any = { email, password };
 
@@ -115,8 +120,14 @@ export default function AuthScreen() {
     }
 
     try {
+      // Dump payload tracking data before account registration
+      await pauseDebug({ role, registrationPayload });
+
       const createdUser = await handleRegistration(role, registrationPayload);
       
+      // Dump raw created user profile info returned from system module
+      await pauseDebug(createdUser);
+
       userSession.setUser({
         id: createdUser.id || '',
         name: createdUser.name,
@@ -128,6 +139,9 @@ export default function AuthScreen() {
       else Alert.alert("Registration Success", `Welcome!`);
       router.push(role === 'student' ? '/(student)/dashboard' : '/(organizer)/dashboard');
     } catch (error: any) {
+      // Dump registration exception logs
+      await pauseDebug({ registrationError: error.message });
+
       if (typeof alert !== 'undefined') alert(`Registration Error: ${error.message}`);
       else Alert.alert("Registration Error", error.message);
     }
@@ -151,8 +165,6 @@ export default function AuthScreen() {
             </View>
 
             <View style={[theme.glassmorphism, styles.formContainer]}>
-              
-              {/* STAGE 1: The toggle pill row has been removed from here */}
               {stage === 1 && (
                 <>
                   <TextInput 
@@ -182,7 +194,6 @@ export default function AuthScreen() {
                 </>
               )}
 
-              {/* STAGE 2 */}
               {stage === 2 && (
                 <>
                   <TextInput 
@@ -208,10 +219,15 @@ export default function AuthScreen() {
                   </Pressable>
                 </>
               )}
-
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+
+        {/* FLOATING STEP OVERLAY BUTTON */}
+        <Pressable style={styles.terminalDebuggerButton} onPress={triggerTerminalResume}>
+          <Text style={styles.terminalDebuggerButtonText}>STEP OVER ⏭️</Text>
+        </Pressable>
+
       </SafeAreaView>
     </LinearGradient>
   );
@@ -229,4 +245,27 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: theme.colors.brightRed, fontWeight: '800', fontSize: 18 },
   secondaryButton: { paddingVertical: 14, alignItems: 'center', marginTop: 15 },
   secondaryButtonText: { color: theme.colors.white, fontWeight: '600', fontSize: 15, textDecorationLine: 'underline' },
+  
+  terminalDebuggerButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: '#121214',
+    borderColor: '#29292e',
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5,
+  },
+  terminalDebuggerButtonText: {
+    color: '#00ff66',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  }
 });
