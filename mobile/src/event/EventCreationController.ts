@@ -9,9 +9,11 @@ export interface CreateEventDTO {
   date: string;
   basePrice: number;
   capacity: number;
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
 }
 
-// Maps backend DB snake_case payload into typed frontend Event object instances
 export function mapDatabaseEventToEvent(dbEvent: any): Event {
   const config: EventConfig = {
     id: dbEvent.id,
@@ -35,7 +37,6 @@ export function mapDatabaseEventToEvent(dbEvent: any): Event {
 export class EventCreationController {
   
   public static async createNewEvent(data: CreateEventDTO): Promise<Event> {
-    // Basic Field Validations
     if (!data.title.trim() || !data.description.trim() || !data.date.trim()) {
       throw new Error('All event configuration fields are required.');
     }
@@ -44,31 +45,33 @@ export class EventCreationController {
       throw new Error('General admission capacity must be at least 1.');
     }
 
-    // Price Below Gateway Minimum Rule (RM1.00 local minimum fee)
     if (data.basePrice > 0 && data.basePrice < 1.00) {
       throw new Error('Price must cover minimum RM1.00 processing fee');
+    }
+
+    if (data.basePrice > 0 && (!data.bankName.trim() || !data.accountNumber.trim() || !data.accountHolder.trim())) {
+      throw new Error('Payout account details are required for paid events.');
     }
 
     try {
       const SERVER_URL = `${API_BASE_URL}/events`;
       console.log(`[Network] Dispatching payload to: ${SERVER_URL}`);
 
-      // Structure the payload
       const payload = {
-        organizerId: data.organizerId, // Will be passed in from the UI layer
+        organizerId: data.organizerId,
         title: data.title,
         description: data.description,
         eventDate: data.date,
         capacity: data.capacity,
         ticketPrice: data.basePrice,
+        bankName: data.bankName,
+        accountNumber: data.accountNumber,
+        accountHolder: data.accountHolder,
       };
 
-      // Execute network call
       const response = await fetch(SERVER_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
@@ -79,8 +82,6 @@ export class EventCreationController {
       }
 
       console.log('[EventCreationController] Database sync complete:', result.message);
-      
-      // Return the complete event object mapped from the database response
       return mapDatabaseEventToEvent(result.event);
 
     } catch (error: any) {
@@ -93,7 +94,6 @@ export class EventCreationController {
     try {
       const response = await fetch(`${API_BASE_URL}/events`);
       const result = await response.json();
-      
       if (!response.ok) throw new Error('Failed to retrieve events');
       return result.events.map((e: any) => mapDatabaseEventToEvent(e));
     } catch (error) {
@@ -107,7 +107,6 @@ export class EventCreationController {
       const response = await fetch(`${API_BASE_URL}/events?organizerId=${organizerId}`);
       const result = await response.json();
       if (!response.ok) throw new Error('Failed to retrieve events for organizer');
-      
       return result.events.map((e: any) => mapDatabaseEventToEvent(e));
     } catch (error) {
       console.error('[EventCreationController] Failed to fetch organizer directory:', error);
@@ -123,7 +122,6 @@ export class EventCreationController {
         body: JSON.stringify({ description, capacity })
       });
       const result = await response.json();
-      
       if (!response.ok) throw new Error(result.error || 'Failed to update event');
     } catch (error: any) {
       console.error('[EventCreationController] Failed to update event:', error);
@@ -137,7 +135,6 @@ export class EventCreationController {
         method: 'PUT'
       });
       const result = await response.json();
-      
       if (!response.ok) throw new Error(result.error || 'Failed to cancel event');
     } catch (error: any) {
       console.error('[EventCreationController] Failed to cancel event:', error);
@@ -151,7 +148,6 @@ export class EventCreationController {
         method: 'DELETE'
       });
       const result = await response.json();
-      
       if (!response.ok) throw new Error(result.error || 'Failed to delete event');
     } catch (error: any) {
       console.error('[EventCreationController] Failed to delete event:', error);
