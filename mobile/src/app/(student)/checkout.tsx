@@ -1,6 +1,7 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import {
-  StyleSheet, Text, View, ScrollView, SafeAreaView,
+  StyleSheet, Text, View, ScrollView, 
   Pressable, Modal, TextInput, ActivityIndicator, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';

@@ -1,7 +1,8 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Pressable,  StyleSheet, Text, TextInput, View, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { theme } from '../constants/theme';
 import { handleRegistration } from '../usr/RegistrationController';
 import { API_BASE_URL } from '../config';

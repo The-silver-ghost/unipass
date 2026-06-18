@@ -1,8 +1,8 @@
 // src/config.ts
 // Centralized configuration that pulls from environment variables
 
-const ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT || 'web-local';
-const COMP_IP = process.env.EXPO_PUBLIC_COMP_IP || 'localhost';
+const ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT || 'physical-device';
+const COMP_IP = process.env.EXPO_PUBLIC_COMP_IP || '192.168.0.208';
 
 let API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
 

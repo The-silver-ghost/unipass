@@ -1,11 +1,58 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView,  Pressable, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { theme } from '../../constants/theme';
+import { API_BASE_URL } from '../../config';
+import { userSession } from '../../usr/UserSession';
 
 export default function ReviewRefundsScreen() {
   const router = useRouter();
+  const [refunds, setRefunds] = useState<any[]>([]);
+
+  const fetchRefunds = async () => {
+    try {
+      const user = userSession.getUser();
+      if (!user) return;
+      
+      const res = await fetch(`${API_BASE_URL}/organizer/${user.id}/refunds`);
+      const data = await res.json();
+      if (res.ok) {
+        setRefunds(data.refunds || []);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchRefunds();
+  }, []);
+
+  const handleApprove = async (regId: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/refunds/${regId}/accept`, { method: 'PUT' });
+      if (res.ok) {
+        Alert.alert('Success', 'Refund approved.');
+        fetchRefunds();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const handleDeny = async (regId: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/refunds/${regId}/deny`, { method: 'PUT' });
+      if (res.ok) {
+        Alert.alert('Success', 'Refund denied.');
+        fetchRefunds();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
+  };
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
@@ -18,31 +65,27 @@ export default function ReviewRefundsScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          
-          <View style={[theme.glassmorphism, styles.refundCard]}>
-            <View style={styles.refundInfo}>
-              <Text style={styles.studentName}>Sanjeevan</Text>
-              <Text style={styles.refundReason}>Reason: Schedule Conflict</Text>
-              <Text style={styles.refundDate}>Requested: 2 hours ago</Text>
-            </View>
-            <View style={styles.actionRow}>
-              <Pressable style={styles.denyButton}><Text style={styles.denyButtonText}>Deny</Text></Pressable>
-              <Pressable style={styles.approveButton}><Text style={styles.approveButtonText}>Approve</Text></Pressable>
-            </View>
-          </View>
-
-          <View style={[theme.glassmorphism, styles.refundCard]}>
-            <View style={styles.refundInfo}>
-              <Text style={styles.studentName}>Isaiah</Text>
-              <Text style={styles.refundReason}>Reason: Other (Medical Emergency, have MC)</Text>
-              <Text style={styles.refundDate}>Requested: 1 day ago</Text>
-            </View>
-            <View style={styles.actionRow}>
-              <Pressable style={styles.denyButton}><Text style={styles.denyButtonText}>Deny</Text></Pressable>
-              <Pressable style={styles.approveButton}><Text style={styles.approveButtonText}>Approve</Text></Pressable>
-            </View>
-          </View>
-
+          {refunds.length === 0 ? (
+            <Text style={{ color: 'white', textAlign: 'center', marginTop: 50 }}>No pending refunds.</Text>
+          ) : (
+            refunds.map((refund, idx) => (
+              <View key={idx} style={[theme.glassmorphism, styles.refundCard]}>
+                <View style={styles.refundInfo}>
+                  <Text style={styles.studentName}>{refund.student_name}</Text>
+                  <Text style={styles.refundReason}>Event: {refund.title}</Text>
+                  <Text style={styles.refundDate}>Price: RM {refund.ticket_price}</Text>
+                </View>
+                <View style={styles.actionRow}>
+                  <Pressable style={styles.denyButton} onPress={() => handleDeny(refund.registration_id)}>
+                    <Text style={styles.denyButtonText}>Deny</Text>
+                  </Pressable>
+                  <Pressable style={styles.approveButton} onPress={() => handleApprove(refund.registration_id)}>
+                    <Text style={styles.approveButtonText}>Approve</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))
+          )}
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>

@@ -4,6 +4,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. USER Table (Base table)
 CREATE TABLE "USER" (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id VARCHAR(255), -- Added based on diagram
     full_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -21,7 +22,11 @@ CREATE TABLE "EVENT" (
     capacity INT NOT NULL,
     ticket_price DECIMAL(10, 2) NOT NULL,
     status VARCHAR(50) NOT NULL, -- e.g., 'Draft', 'Published', 'Cancelled'
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    bank_name VARCHAR(255),      -- Added based on diagram
+    account_number VARCHAR(255), -- Added based on diagram
+    account_holder VARCHAR(255), -- Added based on diagram
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    event_end_date TIMESTAMP WITH TIME ZONE
 );
 
 -- 3. REGISTRATION Table (Linking Students to Events)
@@ -30,7 +35,7 @@ CREATE TABLE "REGISTRATION" (
     student_id UUID NOT NULL REFERENCES "USER"(id) ON DELETE CASCADE,
     event_id UUID NOT NULL REFERENCES "EVENT"(id) ON DELETE CASCADE,
     registered_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(50) NOT NULL -- e.g., 'Pending', 'Confirmed', 'Refunded'
+    status VARCHAR(50) NOT NULL -- e.g., 'Pending', 'Confirmed', 'Refunded', 'RefundRequested', 'Cancelled'
 );
 
 -- 4. PAYMENT_LOG Table
@@ -60,9 +65,10 @@ CREATE TABLE "EPASS" (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     registration_id UUID NOT NULL REFERENCES "REGISTRATION"(id) ON DELETE CASCADE,
     qr_code VARCHAR(255) UNIQUE NOT NULL,
-    state VARCHAR(50) NOT NULL, -- e.g., 'Active', 'Scanned', 'Expired'
+    state VARCHAR(50) NOT NULL, -- e.g., 'Active', 'Scanned', 'Expired', 'Cancelled', 'Refunded'
     issued_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    used_at TIMESTAMP WITH TIME ZONE
+    used_at TIMESTAMP WITH TIME ZONE,
+    is_hidden BOOLEAN DEFAULT FALSE
 );
 
 -- 7. EPASS_STATE_LOG Table (Tracking ticket state changes)

@@ -1,17 +1,32 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView,  Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { theme } from '../../constants/theme';
+import { API_BASE_URL } from '../../config';
+import { userSession } from '../../usr/UserSession';
 
 export default function StudentNotificationsScreen() {
   const router = useRouter();
+  const [notifications, setNotifications] = useState<any[]>([]);
 
-  const notifications = [
-    { id: '1', title: 'Payment Successful!', message: 'Your payment for Campus Music Fest was successful. Your E-Pass is ready.', time: '10 mins ago', isUnread: true },
-    { id: '2', title: 'Event Update', message: 'Organizer Announcement: The venue has been moved to the Main Hall.', time: '2 hours ago', isUnread: true },
-    { id: '3', title: 'Refund Approved', message: 'Your refund for Movie Night has been approved.', time: '1 day ago', isUnread: false },
-  ];
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const user = userSession.getUser();
+        if (!user) return;
+        const res = await fetch(`${API_BASE_URL}/notifications/${user.id}`);
+        const data = await res.json();
+        if (data.notifications) {
+          setNotifications(data.notifications);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchNotifications();
+  }, []);
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
@@ -24,15 +39,19 @@ export default function StudentNotificationsScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {notifications.map((notif) => (
-            <View key={notif.id} style={[theme.glassmorphism, styles.card, notif.isUnread && styles.unreadCard]}>
-              <View style={styles.cardHeader}>
-                <Text style={[styles.cardTitle, notif.isUnread && styles.unreadText]}>{notif.title}</Text>
-                <Text style={styles.timeText}>{notif.time}</Text>
+          {notifications.length === 0 ? (
+            <Text style={{ color: 'white', textAlign: 'center', marginTop: 50 }}>No new notifications.</Text>
+          ) : (
+            notifications.map((notif) => (
+              <View key={notif.id} style={[theme.glassmorphism, styles.card, notif.isUnread && styles.unreadCard]}>
+                <View style={styles.cardHeader}>
+                  <Text style={[styles.cardTitle, notif.isUnread && styles.unreadText]}>{notif.title}</Text>
+                  <Text style={styles.timeText}>{notif.time}</Text>
+                </View>
+                <Text style={styles.messageText}>{notif.message}</Text>
               </View>
-              <Text style={styles.messageText}>{notif.message}</Text>
-            </View>
-          ))}
+            ))
+          )}
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>

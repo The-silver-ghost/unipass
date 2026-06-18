@@ -1,10 +1,15 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView,  Pressable, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { theme } from '../../constants/theme';
 import { EventCreationController } from '../../event/EventCreationController';
+import { userSession } from '../../usr/UserSession';
+import { API_BASE_URL } from '../../config';
 
 export default function ManageEventDashboard() {
   const router = useRouter();
@@ -13,9 +18,31 @@ export default function ManageEventDashboard() {
   const eventId = params.id as string;
   const title = params.title as string || 'Event Details';
   const capacity = params.capacity as string || '0';
+  const participantCount = params.participantCount as string || '0';
   const price = params.price as string || 'Free';
 
   const [isCancelling, setIsCancelling] = useState(false);
+  const [pendingRefunds, setPendingRefunds] = useState(0);
+
+  React.useEffect(() => {
+    async function loadRefunds() {
+      try {
+        const sessionUser = userSession.getUser();
+        if (!sessionUser) return;
+        
+        const res = await fetch(`${API_BASE_URL}/organizer/${sessionUser.id}/refunds`);
+        if (res.ok) {
+          const data = await res.json();
+          // Filter refunds for this specific event
+          const eventRefunds = data.refunds.filter((r: any) => r.event_id === eventId);
+          setPendingRefunds(eventRefunds.length);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    loadRefunds();
+  }, [eventId]);
 
   const handleCancelEvent = () => {
     Alert.alert(
@@ -44,6 +71,36 @@ export default function ManageEventDashboard() {
     );
   };
 
+  const handleExport = async () => {
+    try {
+      Alert.alert('Exporting', 'Preparing your roster...');
+      const res = await fetch(`${API_BASE_URL}/events/${eventId}/participants/export`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch export data.');
+      }
+      const csvText = await res.text();
+      
+      const safeTitle = title.replace(/[^a-zA-Z0-9]/g, '_');
+      const dateStr = new Date().toISOString().split('T')[0];
+      const timeStr = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
+      const filename = `${safeTitle}_${dateStr}_${timeStr}.csv`;
+      
+      const fileUri = `${FileSystem.documentDirectory}${filename}`;
+      
+      await FileSystem.writeAsStringAsync(fileUri, csvText, { encoding: FileSystem.EncodingType.UTF8 });
+      
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(fileUri);
+      } else {
+        Alert.alert('Success', `File saved to ${fileUri}`);
+      }
+    } catch (error: any) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to export roster: ' + error.message);
+    }
+  };
+
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
@@ -60,11 +117,11 @@ export default function ManageEventDashboard() {
 
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>0</Text>
+              <Text style={styles.statNumber}>{participantCount}</Text>
               <Text style={styles.statLabel}>Sold / {capacity}</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>0</Text>
+              <Text style={styles.statNumber}>{pendingRefunds}</Text>
               <Text style={styles.statLabel}>Pending Refunds</Text>
             </View>
           </View>
@@ -96,7 +153,7 @@ export default function ManageEventDashboard() {
               <Text style={styles.gridText}>Review Refunds</Text>
             </Pressable>
 
-            <Pressable style={styles.gridItem} onPress={() => console.log('Exporting...')}>
+            <Pressable style={styles.gridItem} onPress={handleExport}>
               <Ionicons name="download-outline" size={32} color={theme.colors.white} style={styles.gridIcon} />
               <Text style={styles.gridText}>Export Roster</Text>
             </Pressable>

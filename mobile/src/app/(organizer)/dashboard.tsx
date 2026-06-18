@@ -1,17 +1,20 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View, ActivityIndicator, Alert } from 'react-native';
+import { Pressable,  ScrollView, StyleSheet, Text, View, ActivityIndicator, Alert } from 'react-native';
 import { theme } from '../../constants/theme';
 import { EventCreationController } from '../../event/EventCreationController';
 import { Event } from '../../event/Event';
 import { userSession } from '../../usr/UserSession';
+import { API_BASE_URL } from '../../config';
 
 export default function OrganizerDashboard() {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [organizerName, setOrganizerName] = useState('Organizer');
+  const [netRevenue, setNetRevenue] = useState('0.00');
 
   const sessionUser = userSession.getUser();
   const organizerId = sessionUser?.id || '41e2bc68-e878-4713-9726-9aafffc0af71'; // Fallback for developer testing
@@ -27,6 +30,12 @@ export default function OrganizerDashboard() {
         try {
           const fetched = await EventCreationController.getEventsByOrganizer(organizerId);
           setEvents(fetched);
+          
+          const revRes = await fetch(`${API_BASE_URL}/organizer/${organizerId}/payments`);
+          if (revRes.ok) {
+            const revData = await revRes.json();
+            setNetRevenue(revData.totalRevenue || '0.00');
+          }
         } catch (error) {
           console.error('[OrganizerDashboard] Error fetching events:', error);
         } finally {
@@ -54,7 +63,7 @@ export default function OrganizerDashboard() {
               <Text style={styles.statLabel}>Active Events</Text>
             </View>
             <View style={[theme.glassmorphism, styles.statBox]}>
-              <Text style={styles.statNumber}>RM 0.00</Text>
+              <Text style={styles.statNumber}>RM {netRevenue}</Text>
               <Text style={styles.statLabel}>Total Net Revenue</Text>
             </View>
           </View>
@@ -93,13 +102,14 @@ export default function OrganizerDashboard() {
                 date: formattedDate,
                 price: event.basePrice === 0 ? 'Free' : `RM ${event.basePrice.toFixed(2)}`,
                 capacity: event.capacity.toString(),
+                participantCount: event.participantCount.toString(),
                 organizerId: event.organizerId
               };
 
               return (
                 <View key={event.id} style={[theme.glassmorphism, styles.eventCard]}>
                   <Text style={styles.eventTitle}>{event.title}</Text>
-                  <Text style={styles.eventDate}>{formattedDate} • {event.capacity} Capacity</Text>
+                  <Text style={styles.eventDate}>{formattedDate} • {event.participantCount} Sold / {event.capacity} Capacity</Text>
                   <View style={styles.actionRow}>
                     {event.status === 'Cancelled' ? (
                       <Pressable 

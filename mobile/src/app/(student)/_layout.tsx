@@ -41,6 +41,14 @@ export default function StudentLayout() {
           drawerIcon: ({ color, size }) => <Ionicons name="ticket" color={color} size={size} />
         }} 
       />
+      <Drawer.Screen 
+        name="notifications" 
+        options={{ 
+          drawerLabel: 'Notifications', 
+          title: 'Notifications',
+          drawerIcon: ({ color, size }) => <Ionicons name="notifications" color={color} size={size} />
+        }} 
+      />
       <Drawer.Screen name="event-details" options={{ drawerItemStyle: { display: 'none' }, title: 'Event Details' }} />
       <Drawer.Screen name="checkout" options={{ drawerItemStyle: { display: 'none' }, title: 'Checkout' }} />
     </Drawer>

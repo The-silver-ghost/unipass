@@ -7,6 +7,7 @@ export interface CreateEventDTO {
   title: string;
   description: string;
   date: string;
+  endDate: string;
   basePrice: number;
   capacity: number;
   bankName: string;
@@ -21,10 +22,12 @@ export function mapDatabaseEventToEvent(dbEvent: any): Event {
     title: dbEvent.title,
     description: dbEvent.description,
     date: dbEvent.event_date,
+    endDate: dbEvent.event_end_date,
     basePrice: typeof dbEvent.ticket_price === 'string' ? parseFloat(dbEvent.ticket_price) : dbEvent.ticket_price,
     capacity: Number(dbEvent.capacity),
     status: dbEvent.status,
-    createdAt: new Date(dbEvent.created_at)
+    createdAt: new Date(dbEvent.created_at),
+    participantCount: Number(dbEvent.participant_count || 0)
   };
 
   if (config.basePrice === 0) {
@@ -37,7 +40,7 @@ export function mapDatabaseEventToEvent(dbEvent: any): Event {
 export class EventCreationController {
   
   public static async createNewEvent(data: CreateEventDTO): Promise<Event> {
-    if (!data.title.trim() || !data.description.trim() || !data.date.trim()) {
+    if (!data.title.trim() || !data.description.trim() || !data.date.trim() || !data.endDate.trim()) {
       throw new Error('All event configuration fields are required.');
     }
 
@@ -62,6 +65,7 @@ export class EventCreationController {
         title: data.title,
         description: data.description,
         eventDate: data.date,
+        eventEndDate: data.endDate,
         capacity: data.capacity,
         ticketPrice: data.basePrice,
         bankName: data.bankName,
@@ -102,6 +106,18 @@ export class EventCreationController {
     }
   }
 
+  public static async getEventDetails(eventId: string): Promise<Event> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error('Failed to retrieve event');
+      return mapDatabaseEventToEvent(result.event);
+    } catch (error: any) {
+      console.error('[EventCreationController] Failed to fetch event details:', error);
+      throw new Error(error.message || 'Network connection failed while fetching event.');
+    }
+  }
+
   public static async getEventsByOrganizer(organizerId: string): Promise<Event[]> {
     try {
       const response = await fetch(`${API_BASE_URL}/events?organizerId=${organizerId}`);
@@ -114,12 +130,12 @@ export class EventCreationController {
     }
   }
 
-  public static async updateEvent(eventId: string, description: string, capacity: number): Promise<void> {
+  public static async updateEvent(eventId: string, description: string, capacity: number, eventDate?: string, eventEndDate?: string): Promise<void> {
     try {
       const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description, capacity })
+        body: JSON.stringify({ description, capacity, eventDate, eventEndDate })
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Failed to update event');
