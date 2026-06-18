@@ -11,12 +11,14 @@ import { resolveStrategy } from '../../payment/PaidEvent';
 import { CheckoutContext } from '../../payment/CheckoutContext';
 import { API_BASE_URL } from '../../config';
 import { userSession } from '../../usr/UserSession';
+import { useDebugPause, triggerTerminalResume } from '../../utils/debugPause';
 
 type PaymentStatus = 'idle' | 'credentials' | 'processing' | 'success' | 'failed';
 
 export default function CheckoutScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { pauseDebug } = useDebugPause();
 
   const [selectedMethod, setSelectedMethod] = useState('fpx');
   const [status, setStatus] = useState<PaymentStatus>('idle');
@@ -51,6 +53,15 @@ export default function CheckoutScreen() {
   try {
     // Client-side credential validation
     const strategy = resolveStrategy(ticketPrice, selectedMethod);
+    const checkoutContext = new CheckoutContext(strategy);
+    
+    await pauseDebug({
+      pattern: "Strategy Pattern (Payment)",
+      action: "Resolved Payment Strategy via CheckoutContext",
+      strategyClass: strategy.constructor.name,
+      amount: ticketPrice
+    });
+
     const credentialsValid = strategy.pay(ticketPrice);
     if (!credentialsValid) {
       setStatus('failed');
@@ -198,6 +209,11 @@ export default function CheckoutScreen() {
 
         </ScrollView>
         </KeyboardAvoidingView>
+
+        {/* FLOATING STEP OVERLAY BUTTON */}
+        <Pressable style={styles.terminalDebuggerButton} onPress={triggerTerminalResume}>
+          <Text style={styles.terminalDebuggerButtonText}>STEP OVER ⏭️</Text>
+        </Pressable>
       </SafeAreaView>
 
       {/* Payment Credentials / Process Modal */}
@@ -258,6 +274,10 @@ export default function CheckoutScreen() {
             )}
 
           </View>
+          {/* FLOATING STEP OVERLAY BUTTON FOR MODAL */}
+          <Pressable style={styles.terminalDebuggerButtonModal} onPress={triggerTerminalResume}>
+            <Text style={styles.terminalDebuggerButtonText}>STEP OVER ⏭️</Text>
+          </Pressable>
         </View>
       </Modal>
 
@@ -304,4 +324,43 @@ const styles = StyleSheet.create({
   modalPayBtnText: { color: theme.colors.white, fontWeight: '800', fontSize: 16 },
   cancelText: { color: '#888', textAlign: 'center', marginTop: 14, fontSize: 14 },
   statusIcon: { fontSize: 48, textAlign: 'center', marginBottom: 12 },
+  terminalDebuggerButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: '#121214',
+    borderColor: '#29292e',
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5,
+  },
+  terminalDebuggerButtonModal: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    backgroundColor: '#121214',
+    borderColor: '#29292e',
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    elevation: 10,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5,
+  },
+  terminalDebuggerButtonText: {
+    color: '#00ff66',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  }
 });

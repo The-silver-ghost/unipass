@@ -1,16 +1,19 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView,  Pressable, TextInput, Modal, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { StyleSheet, Text, View, ScrollView, Pressable, TextInput, Modal, KeyboardAvoidingView, Platform, Alert, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { theme } from '../../constants/theme';
 import { API_BASE_URL } from '../../config';
 import { userSession } from '../../usr/UserSession';
 import { Ionicons } from '@expo/vector-icons';
+import { useDebugPause, triggerTerminalResume } from '../../utils/debugPause';
+import { EPassManager } from '../../epass/EPassManager';
 
 export default function StudentWalletScreen() {
   const router = useRouter();
+  const { pauseDebug } = useDebugPause();
   const [passes, setPasses] = useState<any[]>([]);
   const [activePass, setActivePass] = useState<any | null>(null);
   const [refundPass, setRefundPass] = useState<any | null>(null);
@@ -31,13 +34,64 @@ export default function StudentWalletScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchPasses();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchPasses();
+    setRefreshing(false);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchPasses();
+    }, [])
+  );
+
+  useEffect(() => {
+    if (!activePass) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const user = userSession.getUser();
+        if (!user) return;
+        const res = await fetch(`${API_BASE_URL}/student/${user.id}/passes`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.passes) {
+            const updatedPass = data.passes.find((p: any) => p.epass_id === activePass.epass_id);
+            if (updatedPass) {
+              setActivePass(updatedPass);
+              setPasses(data.passes.filter((p: any) => !p.is_hidden));
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Failed to poll E-Pass status:", error);
+      }
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [activePass]);
 
   const handleRefundOrCancel = async () => {
     if (!refundPass) return;
+    const isFree = parseFloat(refundPass.ticket_price) === 0;
     try {
+      const epassContext = EPassManager.createContext(refundPass.state, refundPass.epass_id, refundPass.registration_id);
+      const oldState = epassContext.getStateName();
+      epassContext.requestRefund(isFree);
+      const newState = epassContext.getStateName();
+
+      await pauseDebug({
+        pattern: "State Pattern (E-Pass State)",
+        action: "State transition on refund/cancel request",
+        epassId: refundPass.epass_id,
+        isFree: isFree,
+        previousState: oldState,
+        newState: newState
+      });
+
       const res = await fetch(`${API_BASE_URL}/refunds/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -56,6 +110,18 @@ export default function StudentWalletScreen() {
 
   const handleDelete = async (epassId: string) => {
     try {
+      const pass = passes.find(p => p.epass_id === epassId);
+      if (pass) {
+        const epassContext = EPassManager.createContext(pass.state, pass.epass_id, pass.registration_id);
+        await pauseDebug({
+          pattern: "State Pattern (E-Pass State)",
+          action: "Deleting/Hiding E-Pass",
+          epassId: epassId,
+          currentState: epassContext.getStateName(),
+          canBeDeleted: epassContext.canBeDeleted()
+        });
+      }
+
       const res = await fetch(`${API_BASE_URL}/epass/${epassId}/hide`, { method: 'PUT' });
       if (res.ok) {
         fetchPasses();
@@ -69,7 +135,7 @@ export default function StudentWalletScreen() {
     return (
       <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
         <SafeAreaView style={styles.qrFullscreen}>
-          <Pressable onPress={() => setActivePass(null)} style={styles.qrBackButton}>
+          <Pressable onPress={() => { setActivePass(null); fetchPasses(); }} style={styles.qrBackButton}>
             <Text style={styles.qrBackButtonText}>← Back to Wallet</Text>
           </Pressable>
           
@@ -103,13 +169,20 @@ export default function StudentWalletScreen() {
           <Text style={styles.pageTitle}>My E-Passes</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.white} />
+          }
+        >
           {passes.map(pass => {
             const isFree = parseFloat(pass.ticket_price) === 0;
             const eventEnded = pass.event_end_date ? new Date(pass.event_end_date).getTime() < new Date().getTime() : false;
-            const showQR = pass.state.toLowerCase() === 'active' || pass.state.toLowerCase() === 'issued';
-            const canRefund = showQR && !eventEnded;
-            const canDelete = !showQR || eventEnded || pass.state.toLowerCase() === 'cancelled' || pass.state.toLowerCase() === 'refunded';
+            
+            const epassContext = EPassManager.createContext(pass.state, pass.epass_id, pass.registration_id);
+            const showQR = epassContext.canShowQRCode() && !eventEnded;
+            const canRefund = epassContext.canRequestRefund() && !eventEnded;
+            const canDelete = epassContext.canBeDeleted() || eventEnded;
 
             return (
               <View key={pass.epass_id} style={[theme.glassmorphism, styles.card]}>
@@ -186,9 +259,18 @@ export default function StudentWalletScreen() {
                   </Pressable>
                 </View>
               </View>
+              {/* FLOATING STEP OVERLAY BUTTON FOR MODAL */}
+              <Pressable style={styles.terminalDebuggerButtonModal} onPress={triggerTerminalResume}>
+                <Text style={styles.terminalDebuggerButtonText}>STEP OVER ⏭️</Text>
+              </Pressable>
             </View>
           </KeyboardAvoidingView>
         </Modal>
+
+        {/* FLOATING STEP OVERLAY BUTTON */}
+        <Pressable style={styles.terminalDebuggerButton} onPress={triggerTerminalResume}>
+          <Text style={styles.terminalDebuggerButtonText}>STEP OVER ⏭️</Text>
+        </Pressable>
 
       </SafeAreaView>
     </LinearGradient>
@@ -235,5 +317,44 @@ const styles = StyleSheet.create({
   modalCancelBtn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.1)' },
   modalCancelText: { color: theme.colors.white, fontWeight: '600' },
   modalSubmitBtn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 10, backgroundColor: theme.colors.brightRed },
-  modalSubmitText: { color: theme.colors.white, fontWeight: '800' }
+  modalSubmitText: { color: theme.colors.white, fontWeight: '800' },
+  terminalDebuggerButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: '#121214',
+    borderColor: '#29292e',
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5,
+  },
+  terminalDebuggerButtonModal: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    backgroundColor: '#121214',
+    borderColor: '#29292e',
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    elevation: 10,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5,
+  },
+  terminalDebuggerButtonText: {
+    color: '#00ff66',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  }
 });

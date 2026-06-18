@@ -781,11 +781,14 @@ app.post('/api/notifications/broadcast', async (req, res) => {
 
 app.listen(PORT, '0.0.0.0', async () => {
   try {
+    await pool.query(`ALTER TABLE "USER" ADD COLUMN IF NOT EXISTS student_id VARCHAR(255);`);
+    await pool.query(`ALTER TABLE "EVENT" ADD COLUMN IF NOT EXISTS event_end_date TIMESTAMP WITH TIME ZONE;`);
+    await pool.query(`ALTER TABLE "EPASS" ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;`);
     await pool.query(`ALTER TABLE "NOTIFICATION" ADD COLUMN IF NOT EXISTS message TEXT;`);
     await pool.query(`ALTER TABLE "NOTIFICATION" ALTER COLUMN registration_id DROP NOT NULL;`);
     await pool.query(`ALTER TABLE "NOTIFICATION" ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES "USER"(id);`);
     await pool.query(`ALTER TABLE "NOTIFICATION" ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES "EVENT"(id);`);
-    console.log('[Database Sync] Updated NOTIFICATION table schema.');
+    console.log('[Database Sync] Updated database schemas.');
   } catch (err) {
     console.error('[Database Sync Error]', err);
   }

@@ -1,8 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, Pressable,  ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { StyleSheet, Text, View, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { theme } from '../../constants/theme';
 import { API_BASE_URL } from '../../config';
 import { EventCreationController } from '../../event/EventCreationController';
@@ -17,40 +17,56 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [studentName, setStudentName] = useState('Harvind');
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadEvents = useCallback(async () => {
+    const sessionUser = userSession.getUser();
+    try {
+      const fetched = await EventCreationController.getPublishedEvents();
+      setEvents(fetched);
+      
+      if (sessionUser?.id) {
+        const regRes = await fetch(`${API_BASE_URL}/student/${sessionUser.id}/registrations`);
+        if (regRes.ok) {
+          const regData = await regRes.json();
+          setRegisteredEvents(regData.eventIds || []);
+        }
+      }
+    } catch (error) {
+      console.error('[StudentDashboard] Error loading events:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadEvents();
+    setRefreshing(false);
+  }, [loadEvents]);
+
   useEffect(() => {
-    // Set greeting name dynamically
     const sessionUser = userSession.getUser();
     if (sessionUser) {
       setStudentName(sessionUser.name);
     }
-
-    // Fetch published events from database
-    async function loadEvents() {
-      try {
-        const fetched = await EventCreationController.getPublishedEvents();
-        setEvents(fetched);
-        
-        if (sessionUser?.id) {
-          const regRes = await fetch(`${API_BASE_URL}/student/${sessionUser.id}/registrations`);
-          if (regRes.ok) {
-            const regData = await regRes.json();
-            setRegisteredEvents(regData.eventIds || []);
-          }
-        }
-      } catch (error) {
-        console.error('[StudentDashboard] Error loading events:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadEvents();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadEvents();
+    }, [loadEvents])
+  );
 
   return (
     <LinearGradient colors={[theme.colors.bg, theme.colors.bgDark]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.white} />
+          }
+        >
           
           <View style={styles.header}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>

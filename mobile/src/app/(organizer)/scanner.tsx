@@ -1,15 +1,18 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View,  Pressable, Alert } from 'react-native';
+import { StyleSheet, Text, View, Pressable, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Camera, CameraView } from 'expo-camera';
 import { theme } from '../../constants/theme';
 import { API_BASE_URL } from '../../config';
 import { userSession } from '../../usr/UserSession';
+import { EPassManager } from '../../epass/EPassManager';
+import { useDebugPause, triggerTerminalResume } from '../../utils/debugPause';
 
 export default function ScannerScreen() {
   const router = useRouter();
+  const { pauseDebug } = useDebugPause();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
 
@@ -24,11 +27,25 @@ export default function ScannerScreen() {
 
   const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
     setScanned(true);
-    
+
     try {
       const user = userSession.getUser();
       if (!user) return;
-      
+
+      // State Pattern transition simulation
+      const epassContext = EPassManager.createContext('Active', 'epass-id-placeholder', 'reg-id-placeholder');
+      const oldState = epassContext.getStateName();
+      epassContext.scan();
+      const newState = epassContext.getStateName();
+
+      await pauseDebug({
+        pattern: "State Pattern (E-Pass State)",
+        action: "Scanning E-Pass (State transition simulation)",
+        qrCode: data,
+        previousState: oldState,
+        newState: newState
+      });
+
       const response = await fetch(`${API_BASE_URL}/epass/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -37,9 +54,9 @@ export default function ScannerScreen() {
           organizerId: user.id
         })
       });
-      
+
       const result = await response.json();
-      
+
       if (response.ok) {
         Alert.alert('Success', 'E-Pass scanned successfully!', [
           { text: 'Scan Next', onPress: () => setScanned(false) }
@@ -96,6 +113,10 @@ export default function ScannerScreen() {
             </Pressable>
           )}
         </View>
+        {/* FLOATING STEP OVERLAY BUTTON */}
+        <Pressable style={styles.terminalDebuggerButton} onPress={triggerTerminalResume}>
+          <Text style={styles.terminalDebuggerButtonText}>STEP OVER ⏭️</Text>
+        </Pressable>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -113,4 +134,27 @@ const styles = StyleSheet.create({
   scannerFrame: { flex: 1, width: '100%', borderRadius: 16, overflow: 'hidden', backgroundColor: 'transparent' },
   scanNextButton: { marginTop: 40, paddingVertical: 14, paddingHorizontal: 30, backgroundColor: theme.colors.white, borderRadius: 30 },
   scanNextButtonText: { color: theme.colors.bgDark, fontWeight: 'bold', fontSize: 16 },
+  terminalDebuggerButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: '#121214',
+    borderColor: '#29292e',
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    elevation: 10,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5,
+  },
+  terminalDebuggerButtonText: {
+    color: '#00ff66',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  }
 });

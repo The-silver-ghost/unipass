@@ -86,7 +86,7 @@ export class EventCreationController {
       }
 
       console.log('[EventCreationController] Database sync complete:', result.message);
-      return mapDatabaseEventToEvent(result.event);
+      return await EventFactory.createEvent(result.event, true);
 
     } catch (error: any) {
       console.error('[EventCreationController] Critical workflow failure:', error);
@@ -99,7 +99,7 @@ export class EventCreationController {
       const response = await fetch(`${API_BASE_URL}/events`);
       const result = await response.json();
       if (!response.ok) throw new Error('Failed to retrieve events');
-      return result.events.map((e: any) => mapDatabaseEventToEvent(e));
+      return await Promise.all(result.events.map((e: any) => EventFactory.createEvent(e)));
     } catch (error) {
       console.error('[EventCreationController] Failed to fetch directory:', error);
       return [];
@@ -111,7 +111,7 @@ export class EventCreationController {
       const response = await fetch(`${API_BASE_URL}/events/${eventId}`);
       const result = await response.json();
       if (!response.ok) throw new Error('Failed to retrieve event');
-      return mapDatabaseEventToEvent(result.event);
+      return await EventFactory.createEvent(result.event);
     } catch (error: any) {
       console.error('[EventCreationController] Failed to fetch event details:', error);
       throw new Error(error.message || 'Network connection failed while fetching event.');
@@ -123,7 +123,7 @@ export class EventCreationController {
       const response = await fetch(`${API_BASE_URL}/events?organizerId=${organizerId}`);
       const result = await response.json();
       if (!response.ok) throw new Error('Failed to retrieve events for organizer');
-      return result.events.map((e: any) => mapDatabaseEventToEvent(e));
+      return await Promise.all(result.events.map((e: any) => EventFactory.createEvent(e)));
     } catch (error) {
       console.error('[EventCreationController] Failed to fetch organizer directory:', error);
       return [];

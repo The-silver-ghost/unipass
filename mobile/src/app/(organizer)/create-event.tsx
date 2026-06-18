@@ -7,9 +7,11 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { theme } from '../../constants/theme';
 import { EventCreationController } from '../../event/EventCreationController';
 import { userSession } from '../../usr/UserSession';
+import { useDebugPause, triggerTerminalResume } from '../../utils/debugPause';
 
 export default function CreateEventScreen() {
   const router = useRouter();
+  const { pauseDebug } = useDebugPause();
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -41,6 +43,15 @@ export default function CreateEventScreen() {
     const organizerId = sessionUser?.id || 'ec52b657-01ca-47fc-bf41-a1ee9fb094f2';
 
     try {
+      await pauseDebug({
+        pattern: "Factory Pattern (Event Creation)",
+        action: "Requesting event creation with factory parameters",
+        title,
+        basePrice,
+        capacity,
+        isPaid: isPaidEvent
+      });
+
       await EventCreationController.createNewEvent({
         organizerId,
         title,
@@ -246,6 +257,11 @@ export default function CreateEventScreen() {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+
+        {/* FLOATING STEP OVERLAY BUTTON */}
+        <Pressable style={styles.terminalDebuggerButton} onPress={triggerTerminalResume}>
+          <Text style={styles.terminalDebuggerButtonText}>STEP OVER ⏭️</Text>
+        </Pressable>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -276,5 +292,27 @@ const styles = StyleSheet.create({
   payoutTitle: { color: theme.colors.white, fontSize: 16, fontWeight: '700' },
   payoutSubtitle: { color: theme.colors.textMuted, fontSize: 13, marginTop: 2 },
   submitButton: { backgroundColor: theme.colors.brightRed, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 28 },
-  submitButtonText: { color: theme.colors.white, fontWeight: '800', fontSize: 16 }
+  submitButtonText: { color: theme.colors.white, fontWeight: '800', fontSize: 16 },
+  terminalDebuggerButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: '#121214',
+    borderColor: '#29292e',
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5,
+  },
+  terminalDebuggerButtonText: {
+    color: '#00ff66',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  }
 });
