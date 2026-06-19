@@ -9,6 +9,20 @@ echo.
 
 rem Detect and display local IPv4 addresses
 echo [System Info] Detecting local IPv4 addresses...
+
+rem Check if node_modules exist, if not, install them automatically
+if not exist "%~dp0server\node_modules" (
+    echo [Setup] node_modules not found in server directory. Installing backend dependencies...
+    pushd "%~dp0server"
+    call npm install
+    popd
+)
+if not exist "%~dp0mobile\node_modules" (
+    echo [Setup] node_modules not found in mobile directory. Installing mobile dependencies...
+    pushd "%~dp0mobile"
+    call npm install
+    popd
+)
 echo If you are testing on a physical device over Wi-Fi,
 echo please ensure COMP_IP in "mobile/src/config.ts" matches
 echo your ip address:
