@@ -93,18 +93,70 @@ app.put('/api/events/:id/cancel', async (req, res) => {
     const eventId = req.params.id;
     
     // Check if free or if all users refunded
-    const eventCheck = await pool.query(`SELECT ticket_price FROM "EVENT" WHERE id = $1`, [eventId]);
+    const eventCheck = await pool.query(`SELECT ticket_price, title FROM "EVENT" WHERE id = $1`, [eventId]);
     if (eventCheck.rows.length === 0) return res.status(404).json({ error: 'Event not found' });
     
+    const eventTitle = eventCheck.rows[0].title;
     const isFree = parseFloat(eventCheck.rows[0].ticket_price) === 0;
     
-    if (!isFree) {
-      const activeRegs = await pool.query(
-        `SELECT COUNT(*) FROM "REGISTRATION" WHERE event_id = $1 AND status NOT IN ('Refunded', 'Cancelled')`,
-        [eventId]
-      );
-      if (parseInt(activeRegs.rows[0].count) > 0) {
-        return res.status(400).json({ error: 'Cannot cancel paid event until all participants are refunded or zero participants registered.' });
+    // Mass cancel/refund all active registrations
+    const activeRegsResult = await pool.query(
+      `SELECT r.id, p.amount, p.method 
+       FROM "REGISTRATION" r
+       LEFT JOIN "PAYMENT_LOG" p ON r.id = p.registration_id AND p.transaction_type = 'charge'
+       WHERE r.event_id = $1 AND r.status NOT IN ('Refunded', 'Cancelled')`,
+      [eventId]
+    );
+
+    for (const row of activeRegsResult.rows) {
+      const regId = row.id;
+      
+      // Get E-Pass details for logging
+      const epassRes = await pool.query(`SELECT id, state FROM "EPASS" WHERE registration_id = $1`, [regId]);
+      
+      if (isFree) {
+        await pool.query(`UPDATE "REGISTRATION" SET status = 'Cancelled' WHERE id = $1`, [regId]);
+        await pool.query(`UPDATE "EPASS" SET state = 'Cancelled' WHERE registration_id = $1`, [regId]);
+        
+        if (epassRes.rows.length > 0) {
+          await pool.query(
+            `INSERT INTO "EPASS_STATE_LOG" (epass_id, triggered_by, old_state, new_state)
+             VALUES ($1, (SELECT organizer_id FROM "EVENT" WHERE id = $2), $3, 'Cancelled')`,
+            [epassRes.rows[0].id, eventId, epassRes.rows[0].state]
+          );
+        }
+
+        // Notify the student
+        await pool.query(`
+          INSERT INTO "NOTIFICATION" (registration_id, type, channel, status, sent_at, message)
+          VALUES ($1, 'Event Cancelled', 'In-App', 'Unread', NOW(), $2)
+        `, [regId, `The event "${eventTitle}" has been cancelled by the organizer.`]);
+      } else {
+        await pool.query(`UPDATE "REGISTRATION" SET status = 'Refunded' WHERE id = $1`, [regId]);
+        await pool.query(`UPDATE "EPASS" SET state = 'Refunded' WHERE registration_id = $1`, [regId]);
+        
+        if (epassRes.rows.length > 0) {
+          await pool.query(
+            `INSERT INTO "EPASS_STATE_LOG" (epass_id, triggered_by, old_state, new_state)
+             VALUES ($1, (SELECT organizer_id FROM "EVENT" WHERE id = $2), $3, 'Refunded')`,
+            [epassRes.rows[0].id, eventId, epassRes.rows[0].state]
+          );
+        }
+
+        if (row.amount) {
+          const refundRef = `REF-${Date.now()}`;
+          await pool.query(
+            `INSERT INTO "PAYMENT_LOG" (registration_id, method, transaction_type, amount, status, paid_at, receipt_ref)
+             VALUES ($1, $2, 'Refund', $3, 'Success', NOW(), $4)`,
+            [regId, row.method, row.amount, refundRef]
+          );
+        }
+        
+        // Notify the student
+        await pool.query(`
+          INSERT INTO "NOTIFICATION" (registration_id, type, channel, status, sent_at, message)
+          VALUES ($1, 'Refund Approved', 'In-App', 'Unread', NOW(), $2)
+        `, [regId, `The event "${eventTitle}" has been cancelled by the organizer. Your refund has been processed.`]);
       }
     }
 
@@ -116,7 +168,7 @@ app.put('/api/events/:id/cancel', async (req, res) => {
     `;
     const result = await pool.query(sqlQuery, [eventId]);
     
-    console.log(`[Server API] Success: Cancelled event ${eventId}`);
+    console.log(`[Server API] Success: Cancelled event ${eventId} and processed ${activeRegsResult.rows.length} mass refunds/cancellations.`);
     res.status(200).json({ message: 'Event cancelled successfully', event: result.rows[0] });
   } catch (error: any) {
     console.error('[Server API] Cancellation error:', error.message);
@@ -572,6 +624,12 @@ app.post('/api/refunds/request', async (req, res) => {
     if (isFree) {
       await pool.query(`UPDATE "REGISTRATION" SET status = 'Cancelled' WHERE id = $1`, [pass.registration_id]);
       await pool.query(`UPDATE "EPASS" SET state = 'Cancelled' WHERE id = $1`, [pass.epass_id]);
+      
+      await pool.query(
+        `INSERT INTO "EPASS_STATE_LOG" (epass_id, triggered_by, old_state, new_state)
+         VALUES ($1, (SELECT student_id FROM "REGISTRATION" WHERE id = $2), $3, 'Cancelled')`,
+        [pass.epass_id, pass.registration_id, pass.state]
+      );
       return res.status(200).json({ success: true, message: 'Free ticket cancelled successfully' });
     } else {
       const msIn24Hours = 24 * 60 * 60 * 1000;
@@ -604,7 +662,22 @@ app.put('/api/refunds/:regId/accept', async (req, res) => {
   try {
     const regId = req.params.regId;
     await pool.query(`UPDATE "REGISTRATION" SET status = 'Refunded' WHERE id = $1`, [regId]);
-    await pool.query(`UPDATE "EPASS" SET state = 'Refunded' WHERE registration_id = $1`, [regId]);
+    
+    // Log state transition
+    const epassRes = await pool.query(`SELECT id, state FROM "EPASS" WHERE registration_id = $1`, [regId]);
+    let oldState = 'Active';
+    if (epassRes.rows.length > 0) {
+      oldState = epassRes.rows[0].state;
+      await pool.query(`UPDATE "EPASS" SET state = 'Refunded' WHERE id = $1`, [epassRes.rows[0].id]);
+      
+      await pool.query(
+        `INSERT INTO "EPASS_STATE_LOG" (epass_id, triggered_by, old_state, new_state)
+         VALUES ($1, (SELECT ev.organizer_id FROM "REGISTRATION" r JOIN "EVENT" ev ON r.event_id = ev.id WHERE r.id = $2), $3, 'Refunded')`,
+        [epassRes.rows[0].id, regId, oldState]
+      );
+    } else {
+      await pool.query(`UPDATE "EPASS" SET state = 'Refunded' WHERE registration_id = $1`, [regId]);
+    }
     
     const refundRef = `REF-${Date.now()}`;
     const regRes = await pool.query(`
