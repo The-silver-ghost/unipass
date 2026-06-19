@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import {
-  StyleSheet, Text, View, ScrollView, 
+  StyleSheet, Text, View, ScrollView,
   Pressable, Modal, TextInput, ActivityIndicator, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -48,55 +48,55 @@ export default function CheckoutScreen() {
   };
 
   const handlePayment = async () => {
-  setStatus('processing');
+    setStatus('processing');
 
-  try {
-    // Client-side credential validation
-    const strategy = resolveStrategy(ticketPrice, selectedMethod);
-    const checkoutContext = new CheckoutContext(strategy);
-    
-    await pauseDebug({
-      pattern: "Strategy Pattern (Payment)",
-      action: "Resolved Payment Strategy via CheckoutContext",
-      strategyClass: strategy.constructor.name,
-      amount: ticketPrice
-    });
+    try {
+      // Client-side credential validation
+      const strategy = resolveStrategy(ticketPrice, selectedMethod);
+      const checkoutContext = new CheckoutContext(strategy);
 
-    const credentialsValid = strategy.pay(ticketPrice);
-    if (!credentialsValid) {
+      await pauseDebug({
+        pattern: "Strategy Pattern (Payment)",
+        action: "Resolved Payment Strategy via CheckoutContext",
+        strategyClass: strategy.constructor.name,
+        amount: ticketPrice
+      });
+
+      const credentialsValid = strategy.pay(ticketPrice);
+      if (!credentialsValid) {
+        setStatus('failed');
+        return;
+      }
+
+      //must be logged in
+      const student = userSession.getUser();
+      if (!student?.id) {
+        setStatus('failed');
+        return;
+      }
+
+      //hit the backend
+      const response = await fetch(`${API_BASE_URL}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: id,
+          studentId: student.id,
+          amount: ticketPrice,
+          method: selectedMethod,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+
+      setStatus('success');
+
+    } catch (e: any) {
+      console.error('[Checkout] Payment error:', e.message);
       setStatus('failed');
-      return;
     }
-
-    // Guard: must be logged in
-    const student = userSession.getUser();
-    if (!student?.id) {
-      setStatus('failed');
-      return;
-    }
-
-    // Hit the backend
-    const response = await fetch(`${API_BASE_URL}/payments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        eventId: id,
-        studentId: student.id,
-        amount: ticketPrice,
-        method: selectedMethod,
-      }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message);
-
-    setStatus('success');
-
-  } catch (e: any) {
-    console.error('[Checkout] Payment error:', e.message);
-    setStatus('failed');
-  }
-};
+  };
 
   const resetModal = () => {
     setStatus('idle');
@@ -155,59 +155,59 @@ export default function CheckoutScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
-          <View style={styles.headerRow}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
-              <Text style={styles.backButtonText}>← Back</Text>
-            </Pressable>
-            <Text style={styles.pageTitle}>Checkout</Text>
-          </View>
-
-          {/* Order Summary */}
-          <View style={[theme.glassmorphism, styles.summaryCard]}>
-            <Text style={styles.sectionLabel}>ORDER SUMMARY</Text>
-            <Text style={styles.eventTitle}>{title}</Text>
-            <Text style={styles.eventDetails}>General Admission • 1 Ticket</Text>
-            <View style={styles.divider} />
-            <View style={styles.priceRow}>
-              <Text style={styles.totalText}>Total to Pay</Text>
-              <Text style={styles.priceAmount}>{price}</Text>
+            <View style={styles.headerRow}>
+              <Pressable onPress={() => router.back()} style={styles.backButton}>
+                <Text style={styles.backButtonText}>← Back</Text>
+              </Pressable>
+              <Text style={styles.pageTitle}>Checkout</Text>
             </View>
-          </View>
 
-          <Text style={styles.methodTitle}>Select Payment Method</Text>
+            {/* Order Summary */}
+            <View style={[theme.glassmorphism, styles.summaryCard]}>
+              <Text style={styles.sectionLabel}>ORDER SUMMARY</Text>
+              <Text style={styles.eventTitle}>{title}</Text>
+              <Text style={styles.eventDetails}>General Admission • 1 Ticket</Text>
+              <View style={styles.divider} />
+              <View style={styles.priceRow}>
+                <Text style={styles.totalText}>Total to Pay</Text>
+                <Text style={styles.priceAmount}>{price}</Text>
+              </View>
+            </View>
 
-          {/* Payment Options */}
-          <View style={theme.glassmorphism}>
-            <Pressable
-              style={[styles.paymentOption, selectedMethod === 'fpx' && styles.selectedOption]}
-              onPress={() => setSelectedMethod('fpx')}
-            >
-              <Text style={styles.paymentText}>🏦 Online Banking (FPX)</Text>
-              {selectedMethod === 'fpx' && <View style={styles.radioDot} />}
+            <Text style={styles.methodTitle}>Select Payment Method</Text>
+
+            {/* Payment Options */}
+            <View style={theme.glassmorphism}>
+              <Pressable
+                style={[styles.paymentOption, selectedMethod === 'fpx' && styles.selectedOption]}
+                onPress={() => setSelectedMethod('fpx')}
+              >
+                <Text style={styles.paymentText}>🏦 Online Banking (FPX)</Text>
+                {selectedMethod === 'fpx' && <View style={styles.radioDot} />}
+              </Pressable>
+
+              <Pressable
+                style={[styles.paymentOption, selectedMethod === 'ewallet' && styles.selectedOption]}
+                onPress={() => setSelectedMethod('ewallet')}
+              >
+                <Text style={styles.paymentText}>📱 Touch 'n Go eWallet</Text>
+                {selectedMethod === 'ewallet' && <View style={styles.radioDot} />}
+              </Pressable>
+
+              <Pressable
+                style={[styles.paymentOption, selectedMethod === 'card' && styles.selectedOption, { borderBottomWidth: 0 }]}
+                onPress={() => setSelectedMethod('card')}
+              >
+                <Text style={styles.paymentText}>💳 Credit / Debit Card</Text>
+                {selectedMethod === 'card' && <View style={styles.radioDot} />}
+              </Pressable>
+            </View>
+
+            <Pressable style={styles.payButton} onPress={handleConfirmPress}>
+              <Text style={styles.payButtonText}>Confirm & Pay</Text>
             </Pressable>
 
-            <Pressable
-              style={[styles.paymentOption, selectedMethod === 'ewallet' && styles.selectedOption]}
-              onPress={() => setSelectedMethod('ewallet')}
-            >
-              <Text style={styles.paymentText}>📱 Touch 'n Go eWallet</Text>
-              {selectedMethod === 'ewallet' && <View style={styles.radioDot} />}
-            </Pressable>
-
-            <Pressable
-              style={[styles.paymentOption, selectedMethod === 'card' && styles.selectedOption, { borderBottomWidth: 0 }]}
-              onPress={() => setSelectedMethod('card')}
-            >
-              <Text style={styles.paymentText}>💳 Credit / Debit Card</Text>
-              {selectedMethod === 'card' && <View style={styles.radioDot} />}
-            </Pressable>
-          </View>
-
-          <Pressable style={styles.payButton} onPress={handleConfirmPress}>
-            <Text style={styles.payButtonText}>Confirm & Pay</Text>
-          </Pressable>
-
-        </ScrollView>
+          </ScrollView>
         </KeyboardAvoidingView>
 
         {/* FLOATING STEP OVERLAY BUTTON */}
