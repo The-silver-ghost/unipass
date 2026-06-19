@@ -1,4 +1,4 @@
-# UniPass 🎫
+# UniPass
 
 A comprehensive university event management system designed to facilitate seamless event posting, payment processing, ticket issuance, and gate verification using a dynamic QR system.
 
@@ -6,7 +6,7 @@ A comprehensive university event management system designed to facilitate seamle
 
 ---
 
-## 🛠️ Technology Stack & Architecture
+## Technology Stack & Architecture
 
 - **Frontend Mobile App**: React Native with **Expo Router** (TypeScript)
 - **Backend API Server**: Node.js with **Express** (TypeScript)
@@ -20,7 +20,7 @@ A comprehensive university event management system designed to facilitate seamle
 
 ---
 
-## 📋 Prerequisites
+## Prerequisites
 
 Ensure you have the following installed on your local machine:
 - **Node.js** (v18.0.0 or newer recommended)
@@ -30,7 +30,7 @@ Ensure you have the following installed on your local machine:
 
 ---
 
-## 🚀 Installation & Setup Guide
+## Installation & Setup Guide
 
 ### 1. Clone & Install Dependencies
 Run `npm install` in both the server and mobile folders to download the required frameworks and libraries.
@@ -166,7 +166,7 @@ EXPO_PUBLIC_API_URL=http://localhost:5000/api
 
 ---
 
-## 🏃 Run the Application
+## Run the Application
 
 ### Option A: The Batch Launcher (Recommended for Windows)
 Simply double-click the **`run.bat`** file in the root folder of this project.
