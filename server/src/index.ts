@@ -278,7 +278,12 @@ app.get('/api/events/:id/participants/export', async (req, res) => {
 
 app.post('/api/register', async (req, res) => {
     const { name, email, password, role, studentID } = req.body;
-    console.log(`[Server API] Received registration for: ${email}`);
+    
+    const trimmedName = typeof name === 'string' ? name.trim() : name;
+    const trimmedEmail = typeof email === 'string' ? email.trim() : email;
+    const trimmedStudentID = typeof studentID === 'string' ? studentID.trim() : studentID;
+
+    console.log(`[Server API] Received registration for: ${trimmedEmail}`);
 
     const sqlQuery = `
         INSERT INTO "USER" (full_name, email, password_hash, role, student_id)
@@ -287,7 +292,7 @@ app.post('/api/register', async (req, res) => {
     `;
 
     try {
-        const dbResult = await pool.query(sqlQuery, [name, email, password, role, studentID || null]);
+        const dbResult = await pool.query(sqlQuery, [trimmedName, trimmedEmail, password, role, trimmedStudentID || null]);
         const newUserId = dbResult.rows[0].id;
         
         console.log(`[Database Success] Inserted user with UUID: ${newUserId}`);
@@ -302,7 +307,7 @@ app.post('/api/register', async (req, res) => {
     catch (error: any) {
         // PostgreSQL code '23505' stands for a UNIQUE KEY Violation
         if (error.code === '23505') {
-            console.log(`[Registration Blocked] Duplicate email rejected: ${email}`);
+            console.log(`[Registration Blocked] Duplicate email rejected: ${trimmedEmail}`);
             return res.status(409).json({ 
                 success: false, 
                 message: "An account with this email address already exists. Please log in instead." 
@@ -317,9 +322,10 @@ app.post('/api/register', async (req, res) => {
 // Add this route right next to your app.post('/register') route:
 
 app.post('/api/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
+    const trimmedEmail = typeof email === 'string' ? email.trim() : email;
 
-    console.log(`[Server API] Login verification requested for: ${email}`);
+    console.log(`[Server API] Login verification requested for: ${trimmedEmail} (expected role: ${role || 'any'})`);
 
     // Query to find the user row matching the typed email
     const sqlQuery = `
@@ -329,7 +335,7 @@ app.post('/api/login', async (req, res) => {
     `;
 
     try { 
-        const dbResult = await pool.query(sqlQuery, [email]);
+        const dbResult = await pool.query(sqlQuery, [trimmedEmail]);
 
         // 1. If no rows are returned, user doesn't exist
         if (dbResult.rows.length === 0) {
@@ -341,6 +347,14 @@ app.post('/api/login', async (req, res) => {
         // 2. Validate password (plain text match for now; ready for bcrypt hash compare later)
         if (userRow.password_hash !== password) {
             return res.status(401).json({ success: false, message: "Incorrect password. Please try again." });
+        }
+
+        // 3. Verify user's role matches the selected role
+        if (role && userRow.role.toLowerCase() !== role.toLowerCase()) {
+            return res.status(401).json({ 
+                success: false, 
+                message: `This account is registered as a ${userRow.role}, not a ${role.toLowerCase()}.` 
+            });
         }
 
         console.log(`[Login Success] Valid matching user found: ${userRow.full_name} (${userRow.role})`);
