@@ -6,10 +6,12 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { theme } from '../../constants/theme';
 import { EventCreationController } from '../../event/EventCreationController';
+import { useDebugPause, triggerTerminalResume } from '../../utils/debugPause';
 
 export default function EditDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { pauseDebug } = useDebugPause();
 
   const eventId = params.id as string;
   const initialDescription = params.description as string || '';
@@ -59,6 +61,16 @@ export default function EditDetailsScreen() {
 
     setSaving(true);
     try {
+      await pauseDebug({
+        pattern: "Factory Pattern (Event Creation)",
+        action: "Updating event details via EventCreationController",
+        eventId: eventId,
+        newDescription: description,
+        newCapacity: capNumber,
+        newDate: date.toISOString(),
+        newEndDate: endDate.toISOString()
+      });
+
       await EventCreationController.updateEvent(eventId, description, capNumber, date.toISOString(), endDate.toISOString());
       Alert.alert('Success', 'Event details updated successfully!', [
         { text: 'OK', onPress: () => router.replace('/(organizer)/dashboard') }
@@ -200,6 +212,10 @@ export default function EditDetailsScreen() {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+        {/* FLOATING STEP OVERLAY BUTTON */}
+        <Pressable style={styles.terminalDebuggerButton} onPress={triggerTerminalResume}>
+          <Text style={styles.terminalDebuggerButtonText}>STEP OVER ⏭️</Text>
+        </Pressable>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -220,4 +236,27 @@ const styles = StyleSheet.create({
   dateTimeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   primaryButton: { backgroundColor: theme.colors.brightRed, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   primaryButtonText: { color: theme.colors.white, fontWeight: '800', fontSize: 16 },
+  terminalDebuggerButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: '#121214',
+    borderColor: '#29292e',
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    elevation: 10,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5,
+  },
+  terminalDebuggerButtonText: {
+    color: '#00ff66',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  }
 });

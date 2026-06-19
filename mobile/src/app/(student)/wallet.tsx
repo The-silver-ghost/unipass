@@ -61,7 +61,12 @@ export default function StudentWalletScreen() {
           if (data.passes) {
             const updatedPass = data.passes.find((p: any) => p.epass_id === activePass.epass_id);
             if (updatedPass) {
-              setActivePass(updatedPass);
+              const epassContext = EPassManager.createContext(updatedPass.state, updatedPass.epass_id, updatedPass.registration_id);
+              if (!epassContext.canShowQRCode()) {
+                setActivePass(null);
+              } else {
+                setActivePass(updatedPass);
+              }
               setPasses(data.passes.filter((p: any) => !p.is_hidden));
             }
           }
@@ -190,7 +195,7 @@ export default function StudentWalletScreen() {
                   <Text style={styles.eventTitle}>{pass.title}</Text>
                   <Text style={styles.eventDetails}>{new Date(pass.event_date).toLocaleDateString()}</Text>
                   <Text style={[styles.eventStatus, pass.state === 'Active' ? {} : {color: theme.colors.textMuted}]}>
-                    {eventEnded ? 'Expired' : pass.state}
+                    {eventEnded && pass.state === 'Active' ? 'Expired' : pass.state}
                   </Text>
                 </View>
                 
@@ -304,7 +309,7 @@ const styles = StyleSheet.create({
   topBackButton: { alignSelf: 'flex-start', marginBottom: 16, padding: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 8 },
   topBackButtonText: { color: theme.colors.white, fontWeight: '600' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 24 },
-  modalContent: { padding: 24, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  modalContent: { padding: 24, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: '#1a0b0b' },
   modalTitle: { color: theme.colors.white, fontSize: 22, fontWeight: 'bold', marginBottom: 8 },
   modalSubtext: { color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 20 },
   reasonGroup: { marginBottom: 20 },

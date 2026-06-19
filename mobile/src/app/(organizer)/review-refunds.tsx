@@ -1,15 +1,18 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView,  Pressable, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView,  Pressable, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { theme } from '../../constants/theme';
 import { API_BASE_URL } from '../../config';
 import { userSession } from '../../usr/UserSession';
+import { useDebugPause, triggerTerminalResume } from '../../utils/debugPause';
+import { EPassManager } from '../../epass/EPassManager';
 
 export default function ReviewRefundsScreen() {
   const router = useRouter();
   const [refunds, setRefunds] = useState<any[]>([]);
+  const { pauseDebug } = useDebugPause();
 
   const fetchRefunds = async () => {
     try {
@@ -32,6 +35,20 @@ export default function ReviewRefundsScreen() {
 
   const handleApprove = async (regId: string) => {
     try {
+      // State Pattern transition simulation
+      const epassContext = EPassManager.createContext('Active', 'epass-id-placeholder', regId);
+      const oldState = epassContext.getStateName();
+      epassContext.approveRefund();
+      const newState = epassContext.getStateName();
+
+      await pauseDebug({
+        pattern: "State Pattern (E-Pass State)",
+        action: "Approving Refund (State transition simulation)",
+        registrationId: regId,
+        previousState: oldState,
+        newState: newState
+      });
+
       const res = await fetch(`${API_BASE_URL}/refunds/${regId}/accept`, { method: 'PUT' });
       if (res.ok) {
         Alert.alert('Success', 'Refund approved.');
@@ -44,6 +61,20 @@ export default function ReviewRefundsScreen() {
 
   const handleDeny = async (regId: string) => {
     try {
+      // State Pattern transition simulation
+      const epassContext = EPassManager.createContext('Active', 'epass-id-placeholder', regId);
+      const oldState = epassContext.getStateName();
+      // Refund is denied, state stays Active
+      const newState = epassContext.getStateName();
+
+      await pauseDebug({
+        pattern: "State Pattern (E-Pass State)",
+        action: "Denying Refund (State transition simulation)",
+        registrationId: regId,
+        previousState: oldState,
+        newState: newState
+      });
+
       const res = await fetch(`${API_BASE_URL}/refunds/${regId}/deny`, { method: 'PUT' });
       if (res.ok) {
         Alert.alert('Success', 'Refund denied.');
@@ -87,6 +118,10 @@ export default function ReviewRefundsScreen() {
             ))
           )}
         </ScrollView>
+        {/* FLOATING STEP OVERLAY BUTTON */}
+        <Pressable style={styles.terminalDebuggerButton} onPress={triggerTerminalResume}>
+          <Text style={styles.terminalDebuggerButtonText}>STEP OVER ⏭️</Text>
+        </Pressable>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -110,5 +145,28 @@ const styles = StyleSheet.create({
   denyButton: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)' },
   denyButtonText: { color: theme.colors.white, fontWeight: '600' },
   approveButton: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#28a745' },
-  approveButtonText: { color: '#fff', fontWeight: 'bold' }
+  approveButtonText: { color: '#fff', fontWeight: 'bold' },
+  terminalDebuggerButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: '#121214',
+    borderColor: '#29292e',
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    elevation: 10,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5,
+  },
+  terminalDebuggerButtonText: {
+    color: '#00ff66',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  }
 });

@@ -1,3 +1,5 @@
+import { pauseDebug } from '../utils/debugPause';
+
 export interface SessionUser {
   id: string;
   name: string;
@@ -8,9 +10,14 @@ export interface SessionUser {
 class UserSession {
   private user: SessionUser | null = null;
 
-  public setUser(user: SessionUser) {
+  public async setUser(user: SessionUser) {
     this.user = user;
     console.log(`[UserSession] Active user session set for: ${user.name} (${user.role})`);
+    await pauseDebug({
+      pattern: "Singleton Pattern (User Session)",
+      action: "Accessing and setting global state on UserSession singleton instance",
+      sessionUser: user
+    });
   }
 
   public getUser(): SessionUser | null {

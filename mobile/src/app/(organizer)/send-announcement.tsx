@@ -5,12 +5,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { theme } from '../../constants/theme';
 import { API_BASE_URL } from '../../config';
+import { useDebugPause, triggerTerminalResume } from '../../utils/debugPause';
 
 export default function SendAnnouncementScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [announcement, setAnnouncement] = useState('');
   const [loading, setLoading] = useState(false);
+  const { pauseDebug } = useDebugPause();
 
   const eventId = params.id as string;
   const organizerId = params.organizerId as string;
@@ -20,6 +22,12 @@ export default function SendAnnouncementScreen() {
     if (!announcement.trim()) return;
     setLoading(true);
     try {
+      await pauseDebug({
+        pattern: "Observer Pattern (Notification Broadcast)",
+        action: "Broadcasting event announcement to participants",
+        eventId: eventId,
+        message: announcement
+      });
       const res = await fetch(`${API_BASE_URL}/notifications/broadcast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -81,6 +89,10 @@ export default function SendAnnouncementScreen() {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+        {/* FLOATING STEP OVERLAY BUTTON */}
+        <Pressable style={styles.terminalDebuggerButton} onPress={triggerTerminalResume}>
+          <Text style={styles.terminalDebuggerButtonText}>STEP OVER ⏭️</Text>
+        </Pressable>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -101,4 +113,27 @@ const styles = StyleSheet.create({
   textArea: { height: 120, textAlignVertical: 'top' },
   primaryButton: { backgroundColor: theme.colors.brightRed, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   primaryButtonText: { color: theme.colors.white, fontWeight: '800', fontSize: 16 },
+  terminalDebuggerButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: '#121214',
+    borderColor: '#29292e',
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    elevation: 10,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5,
+  },
+  terminalDebuggerButtonText: {
+    color: '#00ff66',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  }
 });

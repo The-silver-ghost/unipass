@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView,  Pressable, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView,  Pressable, Alert, ActivityIndicator, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,10 +10,13 @@ import { theme } from '../../constants/theme';
 import { EventCreationController } from '../../event/EventCreationController';
 import { userSession } from '../../usr/UserSession';
 import { API_BASE_URL } from '../../config';
+import { useDebugPause, triggerTerminalResume } from '../../utils/debugPause';
+import { EPassManager } from '../../epass/EPassManager';
 
 export default function ManageEventDashboard() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { pauseDebug } = useDebugPause();
 
   const eventId = params.id as string;
   const title = params.title as string || 'Event Details';
@@ -56,6 +59,27 @@ export default function ManageEventDashboard() {
           onPress: async () => {
             setIsCancelling(true);
             try {
+              // State Pattern transition simulation
+              const epassContext = EPassManager.createContext('Active', 'epass-id-placeholder', 'reg-id-placeholder');
+              const oldState = epassContext.getStateName();
+              
+              // Simulate transition to Cancelled/Refunded state depending on whether event is free
+              const isFree = price === 'Free' || parseFloat(price) === 0;
+              const targetStateName = isFree ? 'Cancelled' : 'Refunded';
+              const simulatedNewState = EPassManager.getStateInstance(targetStateName);
+              epassContext.setState(simulatedNewState);
+              const newState = epassContext.getStateName();
+
+              await pauseDebug({
+                pattern: "State Pattern (E-Pass State)",
+                action: "Event Cancellation (Mass state transition simulation)",
+                eventId: eventId,
+                eventTitle: title,
+                isFree: isFree,
+                previousState: oldState,
+                newState: newState
+              });
+
               await EventCreationController.cancelEvent(eventId);
               Alert.alert('Success', 'Event has been cancelled.', [
                 { text: 'OK', onPress: () => router.replace('/(organizer)/dashboard') }
@@ -73,6 +97,13 @@ export default function ManageEventDashboard() {
 
   const handleExport = async () => {
     try {
+      await pauseDebug({
+        pattern: "File System / Export Data",
+        action: "Exporting participant roster as CSV",
+        eventId: eventId,
+        eventTitle: title
+      });
+
       Alert.alert('Exporting', 'Preparing your roster...');
       const res = await fetch(`${API_BASE_URL}/events/${eventId}/participants/export`);
       if (!res.ok) {
@@ -171,6 +202,10 @@ export default function ManageEventDashboard() {
           </View>
 
         </ScrollView>
+        {/* FLOATING STEP OVERLAY BUTTON */}
+        <Pressable style={styles.terminalDebuggerButton} onPress={triggerTerminalResume}>
+          <Text style={styles.terminalDebuggerButtonText}>STEP OVER ⏭️</Text>
+        </Pressable>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -196,5 +231,28 @@ const styles = StyleSheet.create({
   dangerZone: { borderWidth: 1, borderColor: theme.colors.brightRed, borderRadius: 16, padding: 20, backgroundColor: 'rgba(219, 44, 44, 0.05)' },
   dangerTitle: { color: theme.colors.brightRed, fontSize: 14, fontWeight: '900', marginBottom: 16, letterSpacing: 1 },
   dangerButton: { backgroundColor: theme.colors.brightRed, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
-  dangerButtonText: { color: theme.colors.white, fontWeight: '800', fontSize: 16 }
+  dangerButtonText: { color: theme.colors.white, fontWeight: '800', fontSize: 16 },
+  terminalDebuggerButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: '#121214',
+    borderColor: '#29292e',
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    elevation: 10,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5,
+  },
+  terminalDebuggerButtonText: {
+    color: '#00ff66',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  }
 });

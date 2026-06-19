@@ -3,6 +3,7 @@ import { EPassContext } from './EPassContext';
 import { ScannedState } from './ScannedState';
 import { ExpiredState } from './ExpiredState';
 import { CancelledState } from './CancelledState';
+import { RefundedState } from './RefundedState';
 
 export class ActiveState implements EPassState {
     getStateName(): string { return 'Active'; }
@@ -23,9 +24,7 @@ export class ActiveState implements EPassState {
     }
 
     approveRefund(context: EPassContext): void {
-        // Can transition from Active to Refunded if organizer approves refund.
-        // Wait, RefundedState isn't imported yet. I'll dynamically require it or just change state.
-        // It's better to manage transitions centrally or just require them.
+        context.setState(new RefundedState());
     }
 
     canShowQRCode(): boolean { return true; }

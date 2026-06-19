@@ -1,8 +1,9 @@
 // Toggle this switch depending on where you are testing:
-const ENVIRONMENT: 'web-local' | 'android-emulator' | 'physical-device' = 'physical-device';
+// Options: 'web-local' | 'android-emulator' | 'physical-device'
+let ENVIRONMENT: string = 'web-local';
 
 // Your computer's local IPv4 address (Only needed if testing on a physical phone via Wi-Fi)
-const COMP_IP = '192.168.1.10';
+const COMP_IP = '172.20.10.2';
 
 let API_BASE_URL = 'http://localhost:5000/api';
 

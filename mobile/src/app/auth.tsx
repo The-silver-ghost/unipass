@@ -66,7 +66,7 @@ export default function AuthScreen() {
         throw new Error(`This account is registered as a ${data.user.role}, not a ${role}.`);
       }
 
-      userSession.setUser({
+      await userSession.setUser({
         id: data.user.id,
         name: data.user.full_name,
         email: data.user.email,
@@ -138,7 +138,7 @@ export default function AuthScreen() {
       // Dump raw created user profile info returned from system module
       await pauseDebug(createdUser);
 
-      userSession.setUser({
+      await userSession.setUser({
         id: createdUser.id || '',
         name: createdUser.name,
         email: createdUser.email,
