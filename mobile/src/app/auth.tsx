@@ -30,7 +30,8 @@ export default function AuthScreen() {
   const [studentID, setStudentID] = useState('');
 
   const handleLoginSubmit = async () => {
-    if (!email || !password) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
       if (typeof alert !== 'undefined') alert("Please fill up both Email and Password to log in.");
       else Alert.alert("Input Error", "Please fill up both Email and Password to log in.");
       return;
@@ -38,15 +39,15 @@ export default function AuthScreen() {
 
     try {
       // Dump raw email and target URL before fetch
-      await pauseDebug({ email, url: `${API_BASE_URL}/login` });
+      await pauseDebug({ email: trimmedEmail, url: `${API_BASE_URL}/login` });
 
-      console.log(`[Web Client Test] Attempting login for: ${email}`);
+      console.log(`[Web Client Test] Attempting login for: ${trimmedEmail} with role: ${role}`);
       const backendUrl = `${API_BASE_URL}/login`; 
 
       const response = await fetch(backendUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email: trimmedEmail, password, role })
       });
 
       // Dump raw fetch response metadata
@@ -59,6 +60,10 @@ export default function AuthScreen() {
 
       if (!response.ok) {
         throw new Error(data.message || "Invalid credentials");
+      }
+
+      if (data.user.role.toLowerCase() !== role.toLowerCase()) {
+        throw new Error(`This account is registered as a ${data.user.role}, not a ${role}.`);
       }
 
       userSession.setUser({
@@ -90,7 +95,8 @@ export default function AuthScreen() {
   };
 
   const handleNextStage = () => {
-    if (!email.trim() || !password.trim()) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password.trim()) {
       if (typeof alert !== 'undefined') {
         alert("Please fill up both Email and Password to begin registration.");
       } else {
@@ -99,7 +105,7 @@ export default function AuthScreen() {
       return; 
     }
 
-    if (!email.includes('@')) {
+    if (!trimmedEmail.includes('@')) {
       if (typeof alert !== 'undefined') alert("Please enter a valid email address.");
       else Alert.alert("Input Error", "Please enter a valid email address.");
       return;
@@ -109,14 +115,18 @@ export default function AuthScreen() {
   };  
 
   const handleSignUpFormSubmit = async () => {
-    const registrationPayload: any = { email, password };
+    const trimmedEmail = email.trim();
+    const trimmedNameOrClub = nameOrClub.trim();
+    const trimmedStudentID = studentID.trim();
+
+    const registrationPayload: any = { email: trimmedEmail, password };
 
     if (role === 'student') {
-      registrationPayload.name = nameOrClub;
-      registrationPayload.studentID = studentID;
+      registrationPayload.name = trimmedNameOrClub;
+      registrationPayload.studentID = trimmedStudentID;
     } else {
-      registrationPayload.name = nameOrClub; 
-      registrationPayload.clubName = nameOrClub;
+      registrationPayload.name = trimmedNameOrClub; 
+      registrationPayload.clubName = trimmedNameOrClub;
     }
 
     try {
